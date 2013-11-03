@@ -1,6 +1,6 @@
 CXX = clang++
 CXXFLAGS = -Wall -Wextra -g -std=c++0x
-OBJS = obj/main.o
+OBJS = obj/main.o obj/file.o
 EXECNAME = supvime
 
 default: $(EXECNAME)

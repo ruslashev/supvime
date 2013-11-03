@@ -1,8 +1,12 @@
 #include <fstream>
+#include "file.hpp"
 
 int main()
 {
-	puts("When I grow up, I'll be big editor like vim!");
+	File file("file.cpp");
+
+	for (auto &s : file.lines)
+		printf("%s\n", s.c_str());
 
 	return 0;
 }
