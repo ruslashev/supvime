@@ -1,16 +1,15 @@
 CXX = clang++
-CXXFLAGS = -Wall -Wextra -g -std=c++0x
-OBJS = obj/main.o obj/file.o
+OBJS = obj/main.o obj/file.o obj/renderer.o
 EXECNAME = supvime
 
 default: $(EXECNAME)
 	./$(EXECNAME)
 
 $(EXECNAME): $(OBJS)
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@ $^ -lncurses
 
 obj/%.o: ./%.cpp
-	$(CXX) -c -o $@ $< $(CXXFLAGS)
+	$(CXX) -c -o $@ $< -Wall -Wextra -g -std=c++0x
 
 clean:
 	-rm -f obj/*.o $(EXECNAME)
