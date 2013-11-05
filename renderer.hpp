@@ -8,7 +8,7 @@
 class Renderer
 {
 public:
-	struct { unsigned int x, y; } cursor;
+	struct { unsigned int x, y; } curs;
 	int COLS, ROWS;
 	Renderer();
 	void Redraw(std::vector<std::string> lines);

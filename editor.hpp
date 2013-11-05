@@ -7,9 +7,14 @@
 
 class Editor
 {
-public:
 	File *fp; // File to operate on
 	Renderer *rp;
+
+	void ProcessNormalModeKey(int key);
+	void ProcessInsertModeKey(int key);
+public:
+	enum { NORMAL, INSERT } mode;
+
 	Editor(File *nfp, Renderer *nrp);
 	void ProcessKey(int key);
 };

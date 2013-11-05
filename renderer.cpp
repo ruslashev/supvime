@@ -19,6 +19,6 @@ void Renderer::Redraw(std::vector<std::string> lines)
 		mvaddstr(i, 0, "~");
 	refresh();
 
-	move(cursor.y, cursor.x+5);
+	move(curs.y, curs.x+5);
 }
 
