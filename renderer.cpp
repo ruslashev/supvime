@@ -10,17 +10,15 @@ Renderer::Renderer()
 	getmaxyx(stdscr, ROWS, COLS);
 }
 
-void Renderer::Redraw(std::vector<std::string> lines, int x, int y)
+void Renderer::Redraw(std::vector<std::string> lines)
 {
 	int i = 0;
-	for (auto &s : lines) {
-		mvprintw(i, 0, "%3d  %s\n", i+1, s.c_str());
-		i++;
-	}
-	while (i < ROWS-1)
-		mvaddstr(i++, 0, "~");
+	for (; i < (int)lines.size(); i++)
+		mvprintw(i, 0, "%3d  %s\n", i+1, lines[i].c_str());
+	for (; i < ROWS-1; i++)
+		mvaddstr(i, 0, "~");
 	refresh();
 
-	move(y, x+5);
+	move(cursor.y, cursor.x+5);
 }
 

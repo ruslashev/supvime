@@ -1,5 +1,5 @@
 CXX = clang++
-OBJS = obj/main.o obj/file.o obj/renderer.o
+OBJS = obj/main.o obj/file.o obj/renderer.o obj/editor.o
 EXECNAME = supvime
 
 default: $(EXECNAME)
