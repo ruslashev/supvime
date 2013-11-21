@@ -1,10 +1,11 @@
 #include "editor.hpp"
 
-Editor::Editor(File *nfp, Renderer *nrp)
+Editor::Editor(File *nfp)
 {
 	fp = nfp;
-	rp = nrp;
 	mode = NORMAL;
+
+	curs.x = curs.y = oldColumn = 0;
 }
 
 void Editor::ProcessKey(int key)
@@ -26,24 +27,23 @@ void Editor::ProcessNormalModeKey(int key)
 			mode = INSERT;
 			break;
 		case 'q':
-			endwin();
 			exit(0);
 			break;
 		case 'h':
-			if (rp->curs.x > 0)
-				rp->curs.x--;
+			if (curs.x > 0)
+				oldColumn = --curs.x;
 			break;
 		case 'l':
-			if (rp->curs.x < fp->lines[rp->curs.y].size()-1)
-				rp->curs.x++;
+			if (curs.x < fp->lines[curs.y].size()-1)
+				oldColumn = ++curs.x;
 			break;
 		case 'k':
-			if (rp->curs.y > 0)
-				rp->curs.y--;
+			if (curs.y > 0)
+				curs.y--;
 			break;
 		case 'j':
-			if (rp->curs.y < fp->lines.size()-1)
-				rp->curs.y++;
+			if (curs.y < fp->lines.size()-1)
+				curs.y++;
 			break;
 	}
 }
@@ -56,8 +56,8 @@ void Editor::ProcessInsertModeKey(int key)
 			break;
 		default:
 			if (32 <= key && key <= 126) {
-				fp->lines[rp->curs.y].insert(rp->curs.x, 1, (char)key);
-				rp->curs.x++;
+				fp->lines[curs.y].insert(curs.x, 1, (char)key);
+				curs.x++;
 			}
 	}
 }

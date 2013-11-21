@@ -4,13 +4,14 @@
 #include <vector>
 #include <string>
 #include <ncurses.h>
+#include "editor.hpp"
 
 class Renderer
 {
+	Editor *ep;
 public:
-	struct { unsigned int x, y; } curs;
 	int COLS, ROWS;
-	Renderer();
+	Renderer(Editor *nep);
 	void Redraw(std::vector<std::string> lines);
 };
 

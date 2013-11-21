@@ -1,6 +1,6 @@
 #include "renderer.hpp"
 
-Renderer::Renderer()
+Renderer::Renderer(Editor *nep)
 {
 	initscr();
 	raw();
@@ -8,6 +8,10 @@ Renderer::Renderer()
 	keypad(stdscr, true);
 
 	getmaxyx(stdscr, ROWS, COLS);
+
+	ep = nep;
+
+	atexit((void (*)())endwin);
 }
 
 void Renderer::Redraw(std::vector<std::string> lines)
@@ -19,6 +23,6 @@ void Renderer::Redraw(std::vector<std::string> lines)
 		mvaddstr(i, 0, "~");
 	refresh();
 
-	move(curs.y, curs.x+5);
+	move(ep->curs.y, ep->curs.x+5);
 }
 

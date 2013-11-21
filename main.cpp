@@ -6,10 +6,8 @@
 int main()
 {
 	File file("file.cpp");
-	Renderer rend;
-	Editor ed(&file, &rend);
-
-	rend.cursor.x = rend.cursor.y = 0;
+	Editor ed(&file);
+	Renderer rend(&ed);
 
 	while (1) {
 		rend.Redraw(file.lines);
