@@ -7,14 +7,13 @@ int main()
 {
 	File file("file.cpp");
 	Editor ed(&file);
-	Renderer rend(&ed);
+	Renderer rend(&ed, 80, 25, "DroidSansMono.ttf", 13);
 
 	while (1) {
 		rend.Redraw(file.lines);
-		ed.ProcessKey(getch());
+		ed.ProcessKey(rend.getch());
 	}
 
-	endwin();
 	return 0;
 }
 

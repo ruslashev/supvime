@@ -6,7 +6,7 @@ default: $(EXECNAME)
 	./$(EXECNAME)
 
 $(EXECNAME): $(OBJS)
-	$(CXX) -o $@ $^ -lncurses
+	$(CXX) -o $@ $^ -lSDL2 -lSDL2_ttf
 
 obj/%.o: ./%.cpp
 	$(CXX) -c -o $@ $< -Wall -Wextra -g -std=c++0x
