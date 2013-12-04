@@ -71,6 +71,7 @@ Renderer::~Renderer()
 
 void Renderer::RebuildSurface()
 {
+	// TODO dirty flag
 	std::string rowStr;
 	SDL_Surface *fontSurf;
 	SDL_Texture *screenTexture;
@@ -88,18 +89,21 @@ void Renderer::RebuildSurface()
 		SDL_FreeSurface(fontSurf);
 		SDL_DestroyTexture(screenTexture);
 	}
+	// Line with cursor
+	const int cx = ep->curs.x;
+	const int cy = ep->curs.y;
+	const char *cursChar = screen[cy][cx].c_str();
+	fontSurf = TTF_RenderUTF8_Shaded(font, cursChar,
+			{20, 20, 20, 255}, {255, 255, 255, 255});
+	SDL_Rect offsetRect = { cx*fontSurf->w, fontSurf->h*cy, fontSurf->w, fontSurf->h };
+	screenTexture = SDL_CreateTextureFromSurface(renderer, fontSurf);
+	SDL_RenderCopy(renderer, screenTexture, NULL, &offsetRect);
+	SDL_FreeSurface(fontSurf);
+	SDL_DestroyTexture(screenTexture);
 }
 
 void Renderer::Redraw(std::vector<std::string> &lines)
 {
-	// int i = 0;
-	// for (; i < (int)lines.size(); i++)
-	// 	mvprintw(i, 0, "%3d  %s\n", i+1, lines[i].c_str());
-	// for (; i < rows-1; i++)
-	// 	mvaddstr(i, 0, "~");
-
-	// move(ep->curs.y, ep->curs.x+5);
-
 	int i = 0;
 	for (; i < (int)lines.size(); i++)
 		mvaddstr(i, 0, lines[i]);
@@ -146,18 +150,28 @@ void Renderer::mvaddstr(int y, int x, std::string str)
 }
 char Renderer::getch()
 {
-	SDL_Event event;
-	SDL_WaitEvent(&event);
-	if (event.type == SDL_KEYDOWN)
-		return (char)event.key.keysym.unicode;
-	else
-		return 0;
+	SDL_StartTextInput();
+	while (1) {
+		if (SDL_PollEvent(&event)) {
+			if (event.type == SDL_TEXTINPUT) {
+				return event.text.text[0];
+			} else if (event.type == SDL_KEYDOWN) {
+				switch (event.key.keysym.scancode) {
+					case SDL_SCANCODE_TAB:
+						return 9;
+						break;
+					default:
+						break;
+				}
+			}
+		}
+	}
 }
 
 void Renderer::UpdateTitle()
 {
 	char titleBuf[128];
-	snprintf(titleBuf, 128, "<filename><modified?> - Supvime");
+	snprintf(titleBuf, 128, "%s <modified?> - Supvime", ep->fp->filename.c_str());
 	SDL_SetWindowTitle(window, titleBuf);
 }
 

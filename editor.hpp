@@ -5,11 +5,11 @@
 
 class Editor
 {
-	File *fp; // File to operate on
-
 	void ProcessNormalModeKey(int key);
 	void ProcessInsertModeKey(int key);
 public:
+	File *fp; // File to operate on
+
 	enum { NORMAL, INSERT } mode;
 	struct { unsigned int x, y; } curs;
 	unsigned int oldColumn;

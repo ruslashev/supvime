@@ -9,6 +9,7 @@ class File
 {
 public:
 	std::vector<std::string> lines;
+	std::string filename;
 
 	File(std::string fileToOpen);
 };

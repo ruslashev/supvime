@@ -1,7 +1,11 @@
+// file.cpp
+// Files I/O operations - read, write etc
+
 #include "file.hpp"
 
 File::File(std::string fileToOpen)
 {
+	filename = fileToOpen;
 	std::ifstream ifs(fileToOpen, std::ifstream::in);
 	if (!ifs) {
 		printf("No such file \"%s\"\n", fileToOpen.c_str());
