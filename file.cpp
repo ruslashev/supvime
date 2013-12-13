@@ -18,5 +18,7 @@ File::File(std::string fileToOpen)
 		lines.push_back(lineBuf);
 		getline(ifs, lineBuf);
 	}
+
+	ifs.close();
 }
 

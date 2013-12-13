@@ -8,13 +8,13 @@ Renderer::Renderer(Editor *nep, int ncols, int nrows, const char *fontPath, int 
 
 	// Initialize SDL
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-		printf("Failed to Initialize SDL: %s\n", SDL_GetError());
+		printf("Failed to initialize SDL: %s\n", SDL_GetError());
 		exit(1);
 	}
 
 	// Initialize SDL_ttf
 	if (TTF_Init() == -1) {
-		printf("Failed to Initialize SDL_ttf: %s\n", TTF_GetError());
+		printf("Failed to initialize SDL_ttf: %s\n", TTF_GetError());
 		exit(1);
 	}
 
@@ -46,7 +46,7 @@ Renderer::Renderer(Editor *nep, int ncols, int nrows, const char *fontPath, int 
 	renderer = SDL_CreateRenderer(window, -1,
 			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == NULL) {
-		printf("Failed to initialize a renderer: %s\n", SDL_GetError());
+		printf("Failed to create a renderer: %s\n", SDL_GetError());
 		exit(1);
 	}
 
@@ -66,7 +66,6 @@ Renderer::~Renderer()
 
 void Renderer::RebuildSurface()
 {
-	std::string rowStr;
 	for (int y = 0; y < rows; y++) {
 		for (int x = 0; x < cols; x++) {
 			SDL_Color fg = {255, 255, 255, 255}, bg = {20, 20, 20, 255};
@@ -78,7 +77,7 @@ void Renderer::RebuildSurface()
 			}
 			SDL_Surface *cellSurf = TTF_RenderUTF8_Shaded(font, screen[y][x].ch.c_str(), fg, bg);
 			SDL_Texture *cellTexture = SDL_CreateTextureFromSurface(renderer, cellSurf);
-			SDL_Rect offsetRect = { cellSurf->w*x, cellSurf->h*y, cellSurf->w, cellSurf->h };
+			SDL_Rect offsetRect = { fontWidth*x, fontHeight*y, fontWidth, fontHeight };
 			SDL_RenderCopy(renderer, cellTexture, NULL, &offsetRect);
 			SDL_FreeSurface(cellSurf);
 			SDL_DestroyTexture(cellTexture);
@@ -110,9 +109,10 @@ void Renderer::Update(std::vector<std::string> &lines)
 
 void Renderer::clear()
 {
+	const std::string emptyStr = " ";
 	for (int y = 0; y < rows; y++)
 		for (int x = 0; x < cols; x++)
-			screen[y][x] = Cell { " ", 0, 0 };
+			screen[y][x] = Cell { emptyStr, 0, 0 };
 }
 void Renderer::move(int y, int x)
 {
