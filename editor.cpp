@@ -10,8 +10,6 @@ Editor::Editor(File *nfp)
 
 void Editor::ProcessKey(int key)
 {
-	printf("Editor::ProcessKey(%d)\n", key);
-
 	switch (mode) {
 		case NORMAL:
 			ProcessNormalModeKey(key);

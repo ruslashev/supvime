@@ -7,13 +7,30 @@
 #include <SDL2/SDL_ttf.h>
 #include "editor.hpp"
 
+struct Cell
+{
+	std::string ch;
+	// string because `char`s aren't sufficient
+	// and `char*`s are cumbersome
+	uint8_t flags;
+	// 000C VBIU
+	// V - inverse
+	// B - bold
+	// I - italics
+	// U - underline
+	// C - color on
+	uint8_t color;
+};
+
 class Renderer
 {
 private:
 	Editor *ep;
 
 	TTF_Font *font;
-	std::vector<std::vector<std::string>> screen;
+	std::vector<std::vector<Cell>> screen;
+
+	int fontWidth, fontHeight;
 
 	void UpdateTitle();
 	void RebuildSurface();
@@ -23,6 +40,8 @@ private:
 	void addstr(std::string str);
 	void mvaddch(int y, int x, std::string c);
 	void mvaddstr(int y, int x, std::string str);
+
+	void markBlock(int sy, int sx, int ey, int ex);
 
 	void clear();
 
@@ -37,7 +56,7 @@ public:
 	Renderer(Editor *nep, int ncols, int nrows, const char *fontPath, int fontSize);
 	~Renderer();
 
-	void Redraw(std::vector<std::string> &lines);
+	void Update(std::vector<std::string> &lines);
 	char getch();
 };
 
