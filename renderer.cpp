@@ -38,6 +38,7 @@ Renderer::Renderer(Editor *nep)
 
 	widgets.push_back(std::unique_ptr<TextEditor>(new TextEditor(80, 25, "DroidSansMono.ttf", 13)));
 	widgets[0]->rend = renderer;
+	widgets[0]->ep = ep;
 }
 
 void Renderer::UpdateTitle()
@@ -141,7 +142,7 @@ void TextEditor::Draw()
 	for (; i <= rows-3; i++)
 		mvaddstr(i, 0, "~");
 
-	// markBlock(ep->curs.x, ep->curs.y, ep->curs.x, ep->curs.y);
+	markBlock(ep->curs.x, ep->curs.y, ep->curs.x, ep->curs.y);
 
 	RebuildSurface();
 }

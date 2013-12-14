@@ -51,6 +51,7 @@ private:
 public:
 	std::vector<std::string> lines;
 	SDL_Renderer *rend;
+	Editor *ep;
 
 	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize);
 	~TextEditor();
