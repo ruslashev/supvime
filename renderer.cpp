@@ -1,8 +1,5 @@
 #include "renderer.hpp"
 
-// TODO reorder functions as they are declared in classes
-// ASCII graph
-
 Renderer::Renderer(Editor *nep)
 {
 	ep = nep;
@@ -43,6 +40,13 @@ Renderer::Renderer(Editor *nep)
 	widgets[0]->rend = renderer;
 }
 
+void Renderer::UpdateTitle()
+{
+	char titleBuf[128];
+	snprintf(titleBuf, 128, "%s <modified?> - Supvime", ep->fp->filename.c_str());
+	SDL_SetWindowTitle(window, titleBuf);
+}
+
 void Renderer::Update(std::vector<std::string> &lines)
 {
 	widgets[0]->lines = lines;
@@ -75,13 +79,6 @@ char Renderer::getch()
 	}
 }
 
-void Renderer::UpdateTitle()
-{
-	char titleBuf[128];
-	snprintf(titleBuf, 128, "%s <modified?> - Supvime", ep->fp->filename.c_str());
-	SDL_SetWindowTitle(window, titleBuf);
-}
-
 Renderer::~Renderer()
 {
 	SDL_DestroyRenderer(renderer);
@@ -111,14 +108,6 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize)
 	screen.resize(rows);
 	for (int y = 0; y < rows; y++)
 		screen[y].resize(cols);
-
-	puts("TextEditor::TextEditor");
-}
-
-TextEditor::~TextEditor()
-{
-	puts("TextEditor::~TextEditor");
-	TTF_CloseFont(font);
 }
 
 void TextEditor::RebuildSurface()
@@ -157,13 +146,6 @@ void TextEditor::Draw()
 	RebuildSurface();
 }
 
-void TextEditor::clear()
-{
-	const std::string emptyStr = " ";
-	for (int y = 0; y < rows; y++)
-		for (int x = 0; x < cols; x++)
-			screen[y][x] = Cell { emptyStr, 0, 0 };
-}
 void TextEditor::move(int y, int x)
 {
 	drwCurs = { (unsigned int)x, (unsigned int)y };
@@ -192,10 +174,23 @@ void TextEditor::mvaddstr(int y, int x, std::string str)
 	addstr(str);
 }
 
+void TextEditor::clear()
+{
+	const Cell emptyCell = Cell { " ", 0, 0 };
+	for (int y = 0; y < rows; y++)
+		for (int x = 0; x < cols; x++)
+			screen[y][x] = emptyCell;
+}
+
 void TextEditor::markBlock(int sx, int sy, int ex, int ey)
 {
 	for (int y = sy; y <= ey; y++)
 		for (int x = sx; x <= ex; x++)
 			screen[y][x].flags |= 8; // inverse for now
+}
+
+TextEditor::~TextEditor()
+{
+	TTF_CloseFont(font);
 }
 

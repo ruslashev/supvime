@@ -12,7 +12,7 @@ File::File(std::string fileToOpen)
 		exit(1);
 	}
 
-	std::string lineBuf;
+	std::string lineBuf = "";
 	getline(ifs, lineBuf);
 	while (ifs.good()) {
 		lines.push_back(lineBuf);

@@ -11,7 +11,7 @@
 struct Cell
 {
 	std::string ch;
-	// string because `char`s aren't sufficient
+	// string because `char`s aren't sufficient for other languages
 	// and `char*`s are cumbersome
 	uint8_t flags;
 	// 000C VBIU
@@ -36,22 +36,18 @@ class TextEditor// : public BaseDrawableWidget
 private:
 	TTF_Font *font;
 	std::vector<std::vector<Cell>> screen;
+	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
 	int fontWidth, fontHeight;
+	int cols, rows;
 
 	void RebuildSurface();
-
 	void move(int y, int x);
 	void addch(std::string c);
 	void addstr(std::string str);
 	void mvaddch(int y, int x, std::string c);
 	void mvaddstr(int y, int x, std::string str);
-
-	void markBlock(int sy, int sx, int ey, int ex);
-
 	void clear();
-
-	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
-	int cols, rows;
+	void markBlock(int sy, int sx, int ey, int ex);
 public:
 	std::vector<std::string> lines;
 	SDL_Renderer *rend;
