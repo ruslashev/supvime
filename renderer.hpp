@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include "editor.hpp"
@@ -22,17 +23,21 @@ struct Cell
 	uint8_t color;
 };
 
-class Renderer
+class BaseDrawableWidget
+{
+public:
+	SDL_Renderer *rend;
+
+	void Draw();
+};
+
+class TextEditor// : public BaseDrawableWidget
 {
 private:
-	Editor *ep;
-
 	TTF_Font *font;
 	std::vector<std::vector<Cell>> screen;
-
 	int fontWidth, fontHeight;
 
-	void UpdateTitle();
 	void RebuildSurface();
 
 	void move(int y, int x);
@@ -46,17 +51,32 @@ private:
 	void clear();
 
 	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
+	int cols, rows;
 public:
+	std::vector<std::string> lines;
+	SDL_Renderer *rend;
+
+	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize);
+	~TextEditor();
+
+	void Draw();
+};
+
+class Renderer
+{
+private:
+	Editor *ep;
+	std::vector<std::unique_ptr<TextEditor>> widgets; // BaseDrawableWidget> widgets;
 	SDL_Window *window;
 	SDL_Renderer *renderer;
 	SDL_Event event;
 
-	int cols, rows;
-
-	Renderer(Editor *nep, int ncols, int nrows, const char *fontPath, int fontSize);
+	void UpdateTitle();
+public:
+	Renderer(Editor *nep);
 	~Renderer();
 
-	void Update(std::vector<std::string> &lines);
+	void Update(std::vector<std::string> &lines); // includes redrawing
 	char getch();
 };
 
