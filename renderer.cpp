@@ -36,8 +36,7 @@ Renderer::Renderer(Editor *nep)
 
 	SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
-	widgets.push_back(std::unique_ptr<TextEditor>(new TextEditor(80, 25, "DroidSansMono.ttf", 13)));
-	widgets[0]->rend = renderer;
+	widgets.push_back(std::unique_ptr<TextEditor>(new TextEditor(80, 25, "DroidSansMono.ttf", 13, renderer)));
 	widgets[0]->ep = ep;
 }
 
@@ -50,6 +49,8 @@ void Renderer::UpdateTitle()
 
 void Renderer::Update(std::vector<std::string> &lines)
 {
+	SDL_RenderClear(renderer);
+
 	widgets[0]->lines = lines;
 	for (auto &w : widgets) {
 		w->Draw();
@@ -88,7 +89,7 @@ Renderer::~Renderer()
 	SDL_Quit();
 }
 
-TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize)
+TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Renderer *nrend)
 {
 	cols = ncols;
 	rows = nrows;
@@ -109,6 +110,22 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize)
 	screen.resize(rows);
 	for (int y = 0; y < rows; y++)
 		screen[y].resize(cols);
+
+	rend = nrend;
+
+	textAreaSurf = SDL_CreateRGBSurface(0, cols*fontWidth, rows*fontHeight, 32, 0, 0, 0, 0);
+	if (textAreaSurf == NULL) {
+		printf("failed to create surface: %s\n", SDL_GetError());
+		exit(3);
+	}
+	textAreaTexture = SDL_CreateTexture(rend,
+			SDL_PIXELFORMAT_ARGB8888,
+			SDL_TEXTUREACCESS_STREAMING,
+			cols*fontWidth, rows*fontHeight);
+	if (textAreaTexture == NULL) {
+		printf("failed to create texture: %s\n", SDL_GetError());
+		exit(3);
+	}
 }
 
 void TextEditor::RebuildSurface()
@@ -123,13 +140,14 @@ void TextEditor::RebuildSurface()
 				bg = tempForSwap;
 			}
 			SDL_Surface *cellSurf = TTF_RenderUTF8_Shaded(font, screen[y][x].ch.c_str(), fg, bg);
-			SDL_Texture *cellTexture = SDL_CreateTextureFromSurface(rend, cellSurf);
-			SDL_Rect offsetRect = { fontWidth*x, fontHeight*y, fontWidth, fontHeight };
-			SDL_RenderCopy(rend, cellTexture, NULL, &offsetRect);
+			SDL_Rect offsetRect = { fontWidth*x, fontHeight*y, 0, 0 };
+			SDL_BlitSurface(cellSurf, NULL, textAreaSurf, &offsetRect);
 			SDL_FreeSurface(cellSurf);
-			SDL_DestroyTexture(cellTexture);
 		}
 	}
+	SDL_UpdateTexture(textAreaTexture, NULL, textAreaSurf->pixels, textAreaSurf->pitch);
+	const SDL_Rect textAreaRect = { 0, 0, cols*fontWidth, rows*fontHeight };
+	SDL_RenderCopy(rend, textAreaTexture, NULL, &textAreaRect);
 }
 
 void TextEditor::Draw()
@@ -192,6 +210,8 @@ void TextEditor::markBlock(int sx, int sy, int ex, int ey)
 
 TextEditor::~TextEditor()
 {
+	SDL_FreeSurface(textAreaSurf);
+	SDL_DestroyTexture(textAreaTexture);
 	TTF_CloseFont(font);
 }
 

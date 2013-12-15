@@ -34,6 +34,8 @@ public:
 class TextEditor// : public BaseDrawableWidget
 {
 private:
+	SDL_Surface *textAreaSurf;
+	SDL_Texture *textAreaTexture;
 	TTF_Font *font;
 	std::vector<std::vector<Cell>> screen;
 	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
@@ -53,7 +55,7 @@ public:
 	SDL_Renderer *rend;
 	Editor *ep;
 
-	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize);
+	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Renderer *nrend);
 	~TextEditor();
 
 	void Draw();
