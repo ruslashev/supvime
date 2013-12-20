@@ -14,12 +14,12 @@ struct Cell
 	// string because `char`s aren't sufficient for other languages
 	// and `char*`s are cumbersome
 	uint8_t flags;
-	// 000C VBIU
-	// V - inverse
+	// 000C BIUV
+	// C - color on
 	// B - bold
 	// I - italics
 	// U - underline
-	// C - color on
+	// V - inverse
 	uint8_t color;
 };
 
@@ -35,7 +35,7 @@ class TextEditor// : public BaseDrawableWidget
 {
 private:
 	SDL_Surface *textAreaSurf;
-	SDL_Texture *textAreaTexture;
+	SDL_Texture *texture;
 	TTF_Font *font;
 	std::vector<std::vector<Cell>> screen;
 	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible

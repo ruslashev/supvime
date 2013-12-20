@@ -100,12 +100,14 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize,
 		printf("TTF error: %s\n", TTF_GetError());
 		exit(2);
 	}
+	if (!TTF_FontFaceIsFixedWidth(font))
+		puts("Warning: using a non monospace font");
 
 	// Get glyph size
 	fontHeight = TTF_FontHeight(font);
 	TTF_GlyphMetrics(font, 'A', NULL, NULL, NULL, NULL, &fontWidth);
 
-	TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
+	// TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
 
 	screen.resize(rows);
 	for (int y = 0; y < rows; y++)
@@ -118,36 +120,67 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize,
 		printf("failed to create surface: %s\n", SDL_GetError());
 		exit(3);
 	}
-	textAreaTexture = SDL_CreateTexture(rend,
-			SDL_PIXELFORMAT_ARGB8888,
+	texture = SDL_CreateTexture(rend,
+			SDL_PIXELFORMAT_RGB888,
 			SDL_TEXTUREACCESS_STREAMING,
 			cols*fontWidth, rows*fontHeight);
-	if (textAreaTexture == NULL) {
+	if (texture == NULL) {
 		printf("failed to create texture: %s\n", SDL_GetError());
 		exit(3);
 	}
 }
 
+Uint32 getpixel(SDL_Surface *surface, const int x, const int y)
+{
+	const int bpp = surface->format->BytesPerPixel;
+	return *((Uint8*)surface->pixels + y*surface->pitch + x*bpp);
+}
+
 void TextEditor::RebuildSurface()
 {
+	if (!texture) {
+		puts("TextEditor::RebuildSurface() ERROR: no active texture!");
+		return;
+	}
+
+	uint32_t* textPixels;
+	int pitch;
+	SDL_LockTexture(texture, NULL, (void**)&textPixels, &pitch);
+
 	for (int y = 0; y < rows; y++) {
 		for (int x = 0; x < cols; x++) {
 			SDL_Color fg = { 255, 255, 255, 255 }, bg = { 20, 20, 20, 255 };
+
 			const uint8_t flags = screen[y][x].flags;
 			if (flags & 8) {
 				const SDL_Color tempForSwap = fg;
 				fg = bg;
 				bg = tempForSwap;
 			}
+
 			SDL_Surface *cellSurf = TTF_RenderUTF8_Shaded(font, screen[y][x].ch.c_str(), fg, bg);
-			SDL_Rect offsetRect = { fontWidth*x, fontHeight*y, 0, 0 };
-			SDL_BlitSurface(cellSurf, NULL, textAreaSurf, &offsetRect);
+
+			Uint8 r, g, b;
+			for (int sry = 0; sry < fontHeight; sry++) {
+				for (int srx = 0; srx < fontWidth; srx++) {
+					const Uint32 px = getpixel(cellSurf, srx, sry);
+					SDL_GetRGB(px, cellSurf->format, &r, &g, &b);
+					const int i = (x*fontWidth)+srx + (((y*fontHeight)+sry) * fontWidth*cols);
+					textPixels[i] = (r << 16) + (g << 8) + b;
+				}
+			}
 			SDL_FreeSurface(cellSurf);
 		}
+
+		// SDL_Rect offsetRect = { 0, fontHeight*y, 0, 0 };
+		// SDL_BlitSurface(cellSurf, NULL, textAreaSurf, &offsetRect);
 	}
-	SDL_UpdateTexture(textAreaTexture, NULL, textAreaSurf->pixels, textAreaSurf->pitch);
+
+	SDL_UnlockTexture(texture);
+
+	// SDL_UpdateTexture(textAreaTexture, NULL, textAreaSurf->pixels, textAreaSurf->pitch);
 	const SDL_Rect textAreaRect = { 0, 0, cols*fontWidth, rows*fontHeight };
-	SDL_RenderCopy(rend, textAreaTexture, NULL, &textAreaRect);
+	SDL_RenderCopy(rend, texture, NULL, &textAreaRect);
 }
 
 void TextEditor::Draw()
@@ -211,7 +244,8 @@ void TextEditor::markBlock(int sx, int sy, int ex, int ey)
 TextEditor::~TextEditor()
 {
 	SDL_FreeSurface(textAreaSurf);
-	SDL_DestroyTexture(textAreaTexture);
+	if (texture)
+		SDL_DestroyTexture(texture);
 	TTF_CloseFont(font);
 }
 
