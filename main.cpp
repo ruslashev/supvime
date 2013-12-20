@@ -1,7 +1,8 @@
-#include <fstream>
 #include "file.hpp"
-#include "renderer.hpp"
+#include "renderer/renderer.hpp"
 #include "editor.hpp"
+
+#include <fstream>
 
 /*         //////                                  //
  *      //        //    //  //////    //      //      //////  ////      ////
@@ -11,11 +12,11 @@
  *                      //
  *                     //
  *
- *
- *  Main component        Must provide
- *  processes keys,      'char getch()'
- *  edits the file         function
- *    +--------+         +----------+
+ *             dependencies
+ *  Main component   |    Must provide
+ *  processes keys,  /   'char getch()'
+ *  edits the file  |      function
+ *    +--------+    v    +----------+
  *    | Editor | <------ | Renderer | _
  *    +--------+         +----------+   \ std::vector of
  *        |                              \
