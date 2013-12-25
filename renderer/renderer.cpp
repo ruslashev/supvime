@@ -46,11 +46,11 @@ void Renderer::UpdateTitle()
 	SDL_SetWindowTitle(window, titleBuf);
 }
 
-void Renderer::Update(std::vector<std::string> &lines)
+void Renderer::Update(std::vector<std::string> &nlines)
 {
 	SDL_RenderClear(renderer);
 
-	widgets[0]->lines = lines;
+	widgets[0]->lines = nlines;
 	for (auto &w : widgets) {
 		w->Draw();
 	}

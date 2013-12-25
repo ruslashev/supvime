@@ -19,17 +19,14 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize,
 	TTF_GlyphMetrics(font, 'A', NULL, NULL, NULL, NULL, &fontWidth);
 
 	screen.resize(rows);
-	for (int y = 0; y < rows; y++)
-		screen[y].resize(cols);
+	for (int y = 0; y < rows; y++) {
+		screen[y].cells.resize(cols);
+		// screen[y].dirty = true;
+	}
 
 	rend = nrend;
 	ep = nep;
 
-	textAreaSurf = SDL_CreateRGBSurface(0, cols*fontWidth, rows*fontHeight, 32, 0, 0, 0, 0);
-	if (textAreaSurf == NULL) {
-		printf("failed to create surface: %s\n", SDL_GetError());
-		exit(3);
-	}
 	texture = SDL_CreateTexture(rend,
 			SDL_PIXELFORMAT_RGB888,
 			SDL_TEXTUREACCESS_STREAMING,
@@ -49,7 +46,7 @@ Uint32 getpixel(SDL_Surface *surface, const int x, const int y)
 void TextEditor::RebuildSurface()
 {
 	if (!texture) {
-		puts("TextEditor::RebuildSurface() ERROR: no active texture!");
+		puts("TextEditor::RebuildSurface() WARNING: no active texture!");
 		return;
 	}
 
@@ -57,40 +54,47 @@ void TextEditor::RebuildSurface()
 	int pitch;
 	SDL_LockTexture(texture, NULL, (void**)&textPixels, &pitch);
 
+	// puts("-- BEGIN draw");
 	for (int y = 0; y < rows; y++) {
+		SDL_Color fg = { 255, 255, 255, 255 }, bg = { 20, 20, 20, 255 };
+		////
+		std::string rowStr = "";
+		for (int c = 0; c < cols; c++)
+			rowStr += screen[y][c].ch;
+		////
+		SDL_Surface *rowSurf = TTF_RenderUTF8_Shaded(font, rowStr.c_str(), fg, bg);
+
 		for (int x = 0; x < cols; x++) {
-			SDL_Color fg = { 255, 255, 255, 255 }, bg = { 20, 20, 20, 255 };
-
 			const uint8_t flags = screen[y][x].flags;
-			if (flags & 8) {
-				const SDL_Color tempForSwap = fg;
-				fg = bg;
-				bg = tempForSwap;
-			}
-
-			SDL_Surface *cellSurf = TTF_RenderUTF8_Shaded(font, screen[y][x].ch.c_str(), fg, bg);
 
 			Uint8 r, g, b;
 			for (int sry = 0; sry < fontHeight; sry++) {
 				for (int srx = 0; srx < fontWidth; srx++) {
-					const Uint32 px = getpixel(cellSurf, srx, sry);
-					SDL_GetRGB(px, cellSurf->format, &r, &g, &b);
+					const Uint32 px = getpixel(rowSurf, x*fontWidth+srx, sry);
+					SDL_GetRGB(px, /* TODO */ rowSurf->format, &r, &g, &b);
+
+					if (flags & 8) {
+						r = 255-r;
+						g = 255-g;
+						b = 255-b;
+					}
+
 					const int i = (x*fontWidth)+srx + (((y*fontHeight)+sry) * fontWidth*cols);
 					textPixels[i] = (r << 16) + (g << 8) + b;
 				}
 			}
-			SDL_FreeSurface(cellSurf);
 		}
-
-		// SDL_Rect offsetRect = { 0, fontHeight*y, 0, 0 };
-		// SDL_BlitSurface(cellSurf, NULL, textAreaSurf, &offsetRect);
+		SDL_FreeSurface(rowSurf);
 	}
+	// puts("-- END draw");
 
 	SDL_UnlockTexture(texture);
 
-	// SDL_UpdateTexture(textAreaTexture, NULL, textAreaSurf->pixels, textAreaSurf->pitch);
 	const SDL_Rect textAreaRect = { 0, 0, cols*fontWidth, rows*fontHeight };
 	SDL_RenderCopy(rend, texture, NULL, &textAreaRect);
+
+	for (int y = 0; y < rows; y++)
+		screen[y].dirty = false;
 }
 
 void TextEditor::Draw()
@@ -114,6 +118,7 @@ void TextEditor::move(int y, int x)
 }
 void TextEditor::addch(std::string c)
 {
+	// screen[drwCurs.y].dirty = true;
 	if ((int)drwCurs.x <= cols-1 && (int)drwCurs.y <= rows-1)
 		screen[drwCurs.y][drwCurs.x].ch = c;
 }
@@ -146,14 +151,15 @@ void TextEditor::clear()
 
 void TextEditor::markBlock(int sx, int sy, int ex, int ey)
 {
-	for (int y = sy; y <= ey; y++)
+	for (int y = sy; y <= ey; y++) {
+		// screen[y].dirty = true;
 		for (int x = sx; x <= ex; x++)
 			screen[y][x].flags |= 8; // inverse for now
+	}
 }
 
 TextEditor::~TextEditor()
 {
-	SDL_FreeSurface(textAreaSurf);
 	if (texture)
 		SDL_DestroyTexture(texture);
 	TTF_CloseFont(font);

@@ -23,13 +23,21 @@ struct Cell
 	uint8_t color;
 };
 
+struct Row
+{
+	bool dirty;
+	std::vector<Cell> cells;
+
+	Cell& operator[](size_t i) { return this->cells[i]; }
+	// const Cell& operator[](size_t i) const { return this->cells[i]; }
+};
+
 class TextEditor// : public BaseDrawableWidget
 {
 private:
-	SDL_Surface *textAreaSurf;
 	SDL_Texture *texture;
 	TTF_Font *font;
-	std::vector<std::vector<Cell>> screen;
+	std::vector<Row> screen;
 	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
 	int fontWidth, fontHeight;
 	int cols, rows;
