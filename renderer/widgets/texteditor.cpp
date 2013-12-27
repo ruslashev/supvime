@@ -10,30 +10,24 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize,
 
 	stash = sth_create(512, 512);
 	if (!stash) {
-		puts("!stash");
+		puts("Failed to create font stash");
 		exit(2);
 	}
 
-	// TODO refactor
-	FILE *fp = fopen(fontPath, "rb");
-	if (!fp) {
-		puts("!fp");
+	std::ifstream fontIfs(fontPath, std::ios::in | std::ios::binary | std::ios::ate);
+	if (!fontIfs) {
+		printf("Failed to open font file \"%s\"\n", fontPath);
 		exit(2);
 	}
-	fseek(fp, 0, SEEK_END);
-	int datasize = (int)ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	fontData = (unsigned char*)malloc(datasize);
-	if (fontData == NULL) {
-		puts("fontData = NULL");
-		exit(2);
-	}
-	fread(fontData, 1, datasize, fp);
-	fclose(fp);
+	std::streampos fontFileSize = fontIfs.tellg();
+	fontData = new unsigned char[fontFileSize];
+	fontIfs.seekg(0, std::ios::beg);
+	fontIfs.read((char*)(&fontData[0]), fontFileSize);
+	fontIfs.close();
 
 	font = sth_add_font_from_memory(stash, fontData);
 	if (!font) {
-		puts("!font");
+		printf("Failed to load font \"%s\"\n", fontPath);
 		exit(2);
 	}
 
@@ -147,6 +141,6 @@ TextEditor::~TextEditor()
 	// if (texture)
 	// 	SDL_DestroyTexture(texture);
 	sth_delete(stash);
-	free(fontData);
+	delete [] fontData;
 }
 
