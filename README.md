@@ -2,12 +2,12 @@
 
 ***Supvime*** is a project set to create the world's best text editor.
 
-That is, it is:
+That is, it is (will be):
 
 1. Awesome and powerful as Vim
 2. Beatiful as Sublime Text
-3. Is better than Gvim
-4. Is Supreme
+3. Better than Gvim
+4. Supreme
 
 ### Technical Documentation
 
@@ -45,5 +45,5 @@ Here's rough draft of how it works inside:
 Supvime wouldn't exist without the following libraries:
 
 * [SDL 2](http://libsdl.org/)
-* [Font stash](https://github.com/akrinke/Font-Stash)
+* [Font stash](https://github.com/memononen/fontstash)
 
