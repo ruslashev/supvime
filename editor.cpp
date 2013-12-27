@@ -4,6 +4,7 @@ Editor::Editor(File *nfp)
 {
 	fp = nfp;
 	mode = NORMAL;
+	quit = false;
 
 	curs.x = curs.y = oldColumn = 0;
 }
@@ -27,7 +28,7 @@ void Editor::ProcessNormalModeKey(int key)
 			mode = INSERT;
 			break;
 		case 'q':
-			exit(0);
+			quit = true;
 			break;
 		case 'h':
 			if (curs.x > 0)

@@ -9,6 +9,7 @@ class Editor
 	void ProcessInsertModeKey(int key);
 public:
 	File *fp; // File to operate on
+	bool quit;
 
 	enum { NORMAL, INSERT } mode;
 	struct { unsigned int x, y; } curs;

@@ -13,10 +13,9 @@ File::File(std::string fileToOpen)
 	}
 
 	std::string lineBuf = "";
-	getline(ifs, lineBuf);
-	while (ifs.good()) {
+	while (getline(ifs, lineBuf)) {
 		lines.push_back(lineBuf);
-		getline(ifs, lineBuf);
+		// printf("%s\n", lineBuf.c_str());
 	}
 
 	ifs.close();

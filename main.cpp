@@ -14,6 +14,8 @@ int main()
 	while (1) {
 		rend.Update(file.lines);
 		ed.ProcessKey(rend.getch());
+		if (ed.quit)
+			break;
 	}
 
 	return 0;

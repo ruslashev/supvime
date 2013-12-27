@@ -23,15 +23,15 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize,
 	fseek(fp, 0, SEEK_END);
 	int datasize = (int)ftell(fp);
 	fseek(fp, 0, SEEK_SET);
-	unsigned char *data = (unsigned char*)malloc(datasize);
-	if (data == NULL) {
-		puts("data = NULL");
+	fontData = (unsigned char*)malloc(datasize);
+	if (fontData == NULL) {
+		puts("fontData = NULL");
 		exit(2);
 	}
-	fread(data, 1, datasize, fp);
+	fread(fontData, 1, datasize, fp);
 	fclose(fp);
 
-	font = sth_add_font_from_memory(stash, data);
+	font = sth_add_font_from_memory(stash, fontData);
 	if (!font) {
 		puts("!font");
 		exit(2);
@@ -50,7 +50,7 @@ void TextEditor::RebuildSurface()
 		}
 	}
 
-	SDL_UnlockTexture(texture);
+	// SDL_UnlockTexture(texture);
 
 	for (int y = 0; y < rows; y++)
 		screen[y].dirty = false;
@@ -144,7 +144,9 @@ void TextEditor::markBlock(int sx, int sy, int ex, int ey)
 
 TextEditor::~TextEditor()
 {
-	if (texture)
-		SDL_DestroyTexture(texture);
+	// if (texture)
+	// 	SDL_DestroyTexture(texture);
+	sth_delete(stash);
+	free(fontData);
 }
 

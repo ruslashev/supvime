@@ -41,6 +41,7 @@ class TextEditor// : public BaseDrawableWidget
 private:
 	struct sth_stash *stash;
 	int font;
+	unsigned char *fontData;
 	std::vector<Row> screen;
 	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
 	int fontWidth, fontHeight;
@@ -56,7 +57,7 @@ private:
 	void clear();
 	void markBlock(int sy, int sx, int ey, int ex);
 public:
-	SDL_Texture *texture;
+	// SDL_Texture *texture;
 	std::vector<std::string> lines;
 
 	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Window *nwp);

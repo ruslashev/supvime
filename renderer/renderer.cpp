@@ -65,8 +65,8 @@ void Renderer::Update(std::vector<std::string> &nlines)
 {
 	// SDL_RenderClear(renderer);
 
-	widgets[0]->lines = nlines;
 	for (auto &w : widgets) {
+		w->lines = nlines;
 		w->Draw();
 	}
 
