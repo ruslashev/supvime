@@ -4,36 +4,6 @@
 
 #include <fstream>
 
-/*         //////                                  //
- *      //        //    //  //////    //      //      //////  ////      ////
- *       ////    //    //  //    //  //      //  //  //    //    //  ////////
- *          //  //    //  //    //    //  //    //  //    //    //  //
- *   //////      //////  //////        //      //  //    //    //    //////
- *                      //
- *                     //
- *
- *             dependencies
- *  Main component   |    Must provide
- *  processes keys,  /   'char getch()'
- *  edits the file  |      function
- *    +--------+    v    +----------+
- *    | Editor | <------ | Renderer | _
- *    +--------+         +----------+   \ std::vector of
- *        |                              \
- *        | 1 or more                +--------------------+
- *        | someday there will       | BaseDrawableWidget |
- *        | be std::vector           +--------------------+
- *        v                                    |
- *     +------+                                ^
- *     | File |                              /   \
- *     +------+                +------------+     (in future)
- *       aka                   | TextEditor |     * status bar
- *     'buffer'                +------------+     * tab bar
- *      in vim                                    * :command line bar
- *
- */
-
-
 int main()
 {
 	File file("file.cpp");
