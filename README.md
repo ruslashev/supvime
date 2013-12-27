@@ -9,6 +9,8 @@ That is, it is:
 3. Is better than Gvim
 4. Is Supreme
 
+### Technical Documentation
+
 Here's rough draft of how it works inside:
 
            //////                                  //
@@ -38,4 +40,10 @@ Here's rough draft of how it works inside:
        'buffer'                +------------+     * tab bar
         in vim                                    * :command line bar
 
+### Libraries
+
+Supvime wouldn't exist without the following libraries:
+
+* [SDL 2](http://libsdl.org/)
+* [Font stash](https://github.com/akrinke/Font-Stash)
 
