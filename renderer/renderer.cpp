@@ -48,10 +48,8 @@ Renderer::Renderer(Editor *nep)
 	}
 	*/
 
-	// TODO get rid
-	SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
-
-	widgets.push_back(std::unique_ptr<TextEditor>(new TextEditor(80, 25, "DroidSansMono.ttf", 13, window)));
+	widgets.push_back(std::unique_ptr<TextEditor>(
+				new TextEditor(80, 25, "DroidSansMono.ttf", { 10, 5, 500, 400 }, window)));
 }
 
 void Renderer::UpdateTitle()

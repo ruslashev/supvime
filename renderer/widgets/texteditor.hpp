@@ -9,9 +9,12 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
-extern "C" {
-#include "../../font-stash/fontstash.h"
-}
+#ifndef RENDERER_HPP
+#define FONTSTASH_IMPLEMENTATION
+#include "../../fontstash/fontstash.h"
+#define GLFONTSTASH_IMPLEMENTATION
+#include "../../fontstash/glfontstash.h"
+#endif
 
 struct Cell
 {
@@ -40,16 +43,14 @@ struct Row
 class TextEditor// : public BaseDrawableWidget
 {
 private:
-	struct sth_stash *stash;
+	struct FONScontext *stash;
 	int font;
-	unsigned char *fontData;
 	std::vector<Row> screen;
 	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
-	int fontWidth, fontHeight;
+	float fontWidth, fontHeight;
 	int cols, rows;
 	SDL_Window *wp;
 
-	void RebuildSurface();
 	void move(int y, int x);
 	void addch(std::string c);
 	void addstr(std::string str);
@@ -60,8 +61,9 @@ private:
 public:
 	// SDL_Texture *texture;
 	std::vector<std::string> lines;
+	SDL_Rect pos;
 
-	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Window *nwp);
+	TextEditor(int ncols, int nrows, const char *fontPath, SDL_Rect npos, SDL_Window *nwp);
 	~TextEditor();
 
 	void Draw();

@@ -1,6 +1,12 @@
 #include "texteditor.hpp"
 
-TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Window *nwp)
+enum { BG, FG };
+const struct { unsigned char r, g, b; } palette[2] = {
+	{ 20,  20,  20  },
+	{ 255, 255, 255 }
+};
+
+TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 {
 	cols = ncols;
 	rows = nrows;
@@ -8,46 +14,20 @@ TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize,
 	for (int y = 0; y < rows; y++)
 		screen[y].cells.resize(cols);
 
-	stash = sth_create(512, 512);
-	if (!stash) {
+	stash = glfonsCreate(512, 512, FONS_ZERO_TOPLEFT);
+	if (stash == NULL) {
 		puts("Failed to create font stash");
 		exit(2);
 	}
 
-	std::ifstream fontIfs(fontPath, std::ios::in | std::ios::binary | std::ios::ate);
-	if (!fontIfs) {
-		printf("Failed to open font file \"%s\"\n", fontPath);
-		exit(2);
-	}
-	std::streampos fontFileSize = fontIfs.tellg();
-	fontData = new unsigned char[fontFileSize];
-	fontIfs.seekg(0, std::ios::beg);
-	fontIfs.read((char*)(&fontData[0]), fontFileSize);
-	fontIfs.close();
-
-	font = sth_add_font_from_memory(stash, fontData);
-	if (!font) {
+	font = fonsAddFont(stash, "sans", fontPath);
+	if (font == FONS_INVALID) {
 		printf("Failed to load font \"%s\"\n", fontPath);
 		exit(2);
 	}
 
 	wp = nwp;
-}
-
-void TextEditor::RebuildSurface()
-{
-	SDL_Rect textPosRect = { 0, 0, cols*fontWidth, rows*fontHeight };
-
-	for (int y = 0; y < rows; y++) {
-		for (int x = 0; x < cols; x++) {
-			SDL_Color fg = { 255, 255, 255, 255 }, bg = { 20, 20, 20, 255 };
-		}
-	}
-
-	// SDL_UnlockTexture(texture);
-
-	for (int y = 0; y < rows; y++)
-		screen[y].dirty = false;
+	pos = npos;
 }
 
 void TextEditor::Draw()
@@ -62,28 +42,37 @@ void TextEditor::Draw()
 
 	// markBlock(rp->ep->curs.x, ep->curs.y, ep->curs.x, ep->curs.y);
 
-	glViewport(0, 0, 800, 600);
-	glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+	glViewport(pos.x, pos.y, pos.w, pos.h);
+	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_TEXTURE_2D);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, 800, 0, 600, -1, 1);
+	glOrtho(pos.x, pos.x+pos.w, pos.y+pos.h, pos.y, -1, 1);
+
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glDisable(GL_DEPTH_TEST);
 	glColor4ub(255, 255, 255, 255);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_CULL_FACE);
 
-	sth_begin_draw(stash);
+	fonsClearState(stash);
+
+	unsigned int white = glfonsRGBA(255, 255, 255, 255);
+	unsigned int red   = glfonsRGBA(255, 20 , 20 , 255);
 	float sx = 100, sy = 200;
-	sth_draw_text(stash, font, 24.f, sx, sy, "Sup, world", &sx);
-	sth_end_draw(stash);
+	fonsSetSize(stash, 24.f);
+	fonsSetFont(stash, font);
+	fonsVertMetrics(stash, NULL, NULL, &fontHeight);
+	fonsSetColor(stash, white);
+	sx = fonsDrawText(stash, sx, sy, "Sup, ", NULL);
 
-	glEnable(GL_DEPTH_TEST);
+	fonsSetColor(stash, red);
+	sx = fonsDrawText(stash, sx, sy, "world", NULL);
 
 	SDL_GL_SwapWindow(wp);
 
@@ -140,7 +129,6 @@ TextEditor::~TextEditor()
 {
 	// if (texture)
 	// 	SDL_DestroyTexture(texture);
-	sth_delete(stash);
-	delete [] fontData;
+	glfonsDelete(stash);
 }
 
