@@ -1,97 +1,56 @@
 #include "texteditor.hpp"
 
-TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Renderer *nrend, Editor *nep)
+TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Window *nwp)
 {
 	cols = ncols;
 	rows = nrows;
+	screen.resize(rows);
+	for (int y = 0; y < rows; y++)
+		screen[y].cells.resize(cols);
 
-	// Open font
-	font = TTF_OpenFont(fontPath, fontSize);
-	if (font == NULL) {
-		printf("TTF error: %s\n", TTF_GetError());
+	stash = sth_create(512, 512);
+	if (!stash) {
+		puts("!stash");
 		exit(2);
 	}
-	if (!TTF_FontFaceIsFixedWidth(font))
-		puts("Warning: using a non monospace font");
 
-	// Get glyph size
-	fontHeight = TTF_FontHeight(font);
-	TTF_GlyphMetrics(font, 'A', NULL, NULL, NULL, NULL, &fontWidth);
+	// TODO refactor
+	FILE *fp = fopen(fontPath, "rb");
+	if (!fp) {
+		puts("!fp");
+		exit(2);
+	}
+	fseek(fp, 0, SEEK_END);
+	int datasize = (int)ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	unsigned char *data = (unsigned char*)malloc(datasize);
+	if (data == NULL) {
+		puts("data = NULL");
+		exit(2);
+	}
+	fread(data, 1, datasize, fp);
+	fclose(fp);
 
-	screen.resize(rows);
-	for (int y = 0; y < rows; y++) {
-		screen[y].cells.resize(cols);
-		// screen[y].dirty = true;
+	font = sth_add_font_from_memory(stash, data);
+	if (!font) {
+		puts("!font");
+		exit(2);
 	}
 
-	rend = nrend;
-	ep = nep;
-
-	texture = SDL_CreateTexture(rend,
-			SDL_PIXELFORMAT_RGB888,
-			SDL_TEXTUREACCESS_STREAMING,
-			cols*fontWidth, rows*fontHeight);
-	if (texture == NULL) {
-		printf("failed to create texture: %s\n", SDL_GetError());
-		exit(3);
-	}
-}
-
-Uint32 getpixel(SDL_Surface *surface, const int x, const int y)
-{
-	const int bpp = surface->format->BytesPerPixel;
-	return *((Uint8*)surface->pixels + y*surface->pitch + x*bpp);
+	wp = nwp;
 }
 
 void TextEditor::RebuildSurface()
 {
-	if (!texture) {
-		puts("TextEditor::RebuildSurface() WARNING: no active texture!");
-		return;
-	}
+	SDL_Rect textPosRect = { 0, 0, cols*fontWidth, rows*fontHeight };
 
-	uint32_t* textPixels;
-	int pitch;
-	SDL_LockTexture(texture, NULL, (void**)&textPixels, &pitch);
-
-	// puts("-- BEGIN draw");
 	for (int y = 0; y < rows; y++) {
-		SDL_Color fg = { 255, 255, 255, 255 }, bg = { 20, 20, 20, 255 };
-		////
-		std::string rowStr = "";
-		for (int c = 0; c < cols; c++)
-			rowStr += screen[y][c].ch;
-		////
-		SDL_Surface *rowSurf = TTF_RenderUTF8_Shaded(font, rowStr.c_str(), fg, bg);
-
 		for (int x = 0; x < cols; x++) {
-			const uint8_t flags = screen[y][x].flags;
-
-			Uint8 r, g, b;
-			for (int sry = 0; sry < fontHeight; sry++) {
-				for (int srx = 0; srx < fontWidth; srx++) {
-					const Uint32 px = getpixel(rowSurf, x*fontWidth+srx, sry);
-					SDL_GetRGB(px, /* TODO */ rowSurf->format, &r, &g, &b);
-
-					if (flags & 8) {
-						r = 255-r;
-						g = 255-g;
-						b = 255-b;
-					}
-
-					const int i = (x*fontWidth)+srx + (((y*fontHeight)+sry) * fontWidth*cols);
-					textPixels[i] = (r << 16) + (g << 8) + b;
-				}
-			}
+			SDL_Color fg = { 255, 255, 255, 255 }, bg = { 20, 20, 20, 255 };
 		}
-		SDL_FreeSurface(rowSurf);
 	}
-	// puts("-- END draw");
 
 	SDL_UnlockTexture(texture);
-
-	const SDL_Rect textAreaRect = { 0, 0, cols*fontWidth, rows*fontHeight };
-	SDL_RenderCopy(rend, texture, NULL, &textAreaRect);
 
 	for (int y = 0; y < rows; y++)
 		screen[y].dirty = false;
@@ -107,9 +66,34 @@ void TextEditor::Draw()
 	for (; i <= rows-3; i++)
 		mvaddstr(i, 0, "~");
 
-	markBlock(ep->curs.x, ep->curs.y, ep->curs.x, ep->curs.y);
+	// markBlock(rp->ep->curs.x, ep->curs.y, ep->curs.x, ep->curs.y);
 
-	RebuildSurface();
+	glViewport(0, 0, 800, 600);
+	glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_TEXTURE_2D);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, 800, 0, 600, -1, 1);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glDisable(GL_DEPTH_TEST);
+	glColor4ub(255, 255, 255, 255);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	sth_begin_draw(stash);
+	float sx = 100, sy = 200;
+	sth_draw_text(stash, font, 24.f, sx, sy, "Sup, world", &sx);
+	sth_end_draw(stash);
+
+	glEnable(GL_DEPTH_TEST);
+
+	SDL_GL_SwapWindow(wp);
+
+	// RebuildSurface();
 }
 
 void TextEditor::move(int y, int x)
@@ -162,6 +146,5 @@ TextEditor::~TextEditor()
 {
 	if (texture)
 		SDL_DestroyTexture(texture);
-	TTF_CloseFont(font);
 }
 

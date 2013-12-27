@@ -1,12 +1,16 @@
 #ifndef TEXTEDITOR_HPP
 #define TEXTEDITOR_HPP
 
-#include "../../editor.hpp"
+// #include "../renderer.hpp"
 
 #include <vector>
 #include <string>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_opengl.h>
+
+extern "C" {
+#include "../../font-stash/fontstash.h"
+}
 
 struct Cell
 {
@@ -35,14 +39,13 @@ struct Row
 class TextEditor// : public BaseDrawableWidget
 {
 private:
-	SDL_Texture *texture;
-	TTF_Font *font;
+	struct sth_stash *stash;
+	int font;
 	std::vector<Row> screen;
 	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
 	int fontWidth, fontHeight;
 	int cols, rows;
-	SDL_Renderer *rend;
-	Editor *ep;
+	SDL_Window *wp;
 
 	void RebuildSurface();
 	void move(int y, int x);
@@ -53,9 +56,10 @@ private:
 	void clear();
 	void markBlock(int sy, int sx, int ey, int ex);
 public:
+	SDL_Texture *texture;
 	std::vector<std::string> lines;
 
-	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Renderer *nrend, Editor *nep);
+	TextEditor(int ncols, int nrows, const char *fontPath, int fontSize, SDL_Window *nwp);
 	~TextEditor();
 
 	void Draw();

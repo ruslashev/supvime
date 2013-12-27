@@ -22,7 +22,8 @@ class Renderer
 private:
 	Editor *ep;
 	SDL_Window *window;
-	SDL_Renderer *renderer;
+	// SDL_Renderer *renderer;
+	SDL_GLContext ctxt;
 	SDL_Event event;
 	std::vector<std::unique_ptr<TextEditor>> widgets; // BaseDrawableWidget> widgets;
 

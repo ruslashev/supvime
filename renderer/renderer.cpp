@@ -10,22 +10,35 @@ Renderer::Renderer(Editor *nep)
 		exit(1);
 	}
 
-	// Initialize SDL_ttf
-	if (TTF_Init() == -1) {
-		printf("Failed to initialize SDL_ttf: %s\n", TTF_GetError());
-		exit(1);
-	}
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,   24);
+	SDL_GL_SetAttribute(SDL_GL_RED_SIZE,     8);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,   8);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,    8);
+	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE,   8);
 
 	// Create window
 	window = SDL_CreateWindow("Supvime loading..",
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			800, 600,
-			SDL_WINDOW_SHOWN);
+			SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (window == NULL) {
 		printf("Failed to open a window: %s\n", SDL_GetError());
 		exit(1);
 	}
 
+	// Initialize SDL_GL
+	ctxt = SDL_GL_CreateContext(window);
+	if (ctxt == NULL) {
+		printf("Failed to create OpenGL rendering context: %s\n", SDL_GetError());
+		exit(1);
+	}
+	if (SDL_GL_SetSwapInterval(1) < 0)
+		printf("Warning: Unable to set VSync: %s\n", SDL_GetError());
+
+	/*
 	// Create an SDL renderer
 	renderer = SDL_CreateRenderer(window, -1,
 			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -33,10 +46,12 @@ Renderer::Renderer(Editor *nep)
 		printf("Failed to create a renderer: %s\n", SDL_GetError());
 		exit(1);
 	}
+	*/
 
+	// TODO get rid
 	SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
-	widgets.push_back(std::unique_ptr<TextEditor>(new TextEditor(80, 25, "DroidSansMono.ttf", 13, renderer, ep)));
+	widgets.push_back(std::unique_ptr<TextEditor>(new TextEditor(80, 25, "DroidSansMono.ttf", 13, window)));
 }
 
 void Renderer::UpdateTitle()
@@ -48,14 +63,14 @@ void Renderer::UpdateTitle()
 
 void Renderer::Update(std::vector<std::string> &nlines)
 {
-	SDL_RenderClear(renderer);
+	// SDL_RenderClear(renderer);
 
 	widgets[0]->lines = nlines;
 	for (auto &w : widgets) {
 		w->Draw();
 	}
 
-	SDL_RenderPresent(renderer);
+	// SDL_RenderPresent(renderer);
 
 	UpdateTitle();
 }
@@ -82,9 +97,8 @@ char Renderer::getch()
 
 Renderer::~Renderer()
 {
-	SDL_DestroyRenderer(renderer);
+	// SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
-	TTF_Quit();
 	SDL_Quit();
 }
 
