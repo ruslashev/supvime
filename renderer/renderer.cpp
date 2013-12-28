@@ -49,7 +49,7 @@ Renderer::Renderer(Editor *nep)
 	*/
 
 	widgets.push_back(std::unique_ptr<TextEditor>(
-				new TextEditor(80, 25, "DroidSansMono.ttf", { 10, 5, 500, 400 }, window)));
+				new TextEditor(80, 25, "DroidSansMono.ttf", { 0, 0, 500, 400 }, window)));
 }
 
 void Renderer::UpdateTitle()

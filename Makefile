@@ -13,7 +13,7 @@ default: $(EXECNAME)
 	./$(EXECNAME)
 
 $(EXECNAME): $(OBJS)
-	$(CXX) -o $@ $^ -lGL -lSDL2
+	$(CXX) -o $@ $^ -lGL -lGLEW -lSDL2
 
 obj/%.o: ./%.cpp
 	$(CXX) -c -o $@ $< -Wall -Wextra -g -std=c++0x
