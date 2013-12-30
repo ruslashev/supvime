@@ -32,7 +32,7 @@ public:
 	Renderer(Editor *nep);
 	~Renderer();
 
-	void Update(std::vector<std::string> &nlines); // includes redrawing
+	void Update(); // includes redrawing
 	char getch();
 };
 

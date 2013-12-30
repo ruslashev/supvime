@@ -1,7 +1,7 @@
 #ifndef TEXTEDITOR_HPP
 #define TEXTEDITOR_HPP
 
-// #include "../renderer.hpp"
+#include "../../editor.hpp"
 
 #include <vector>
 #include <string>
@@ -10,61 +10,60 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
-#ifndef RENDERER_HPP
-#define FONTSTASH_IMPLEMENTATION
-#include "../../fontstash/fontstash.h"
-#define GLFONTSTASH_IMPLEMENTATION
-#include "../../fontstash/glfontstash.h"
-#endif
+#include <freetype2/ft2build.h>
+#include FT_FREETYPE_H
 
+/*
 struct Cell
 {
 	std::string ch;
 	// string because `char`s aren't sufficient for other languages
 	// and `char*`s are cumbersome
-	uint8_t flags;
-	// 000C BIUV
-	// C - color on
+};
+
+struct CellFlag
+{
+	uint8_t flag;
+	// CCCC BIUV
+	// C - palette color index
 	// B - bold
 	// I - italics
 	// U - underline
 	// V - inverse
-	uint8_t color;
+	size_t start; // On what column does flag start
+	size_t len;   // how many lines spans
 };
 
-struct Row
+struct DrawableLine
 {
-	bool dirty;
-	std::vector<Cell> cells;
-
-	Cell& operator[](size_t i) { return this->cells[i]; }
-	// const Cell& operator[](size_t i) const { return this->cells[i]; }
+	std::string str;
+	std::vector<CellFlag> flags;
 };
+*/
 
 class TextEditor// : public BaseDrawableWidget
 {
 private:
-	struct FONScontext *stash;
-	int font;
-	std::vector<Row> screen;
-	struct { unsigned int x, y; } drwCurs; // cursor used for drawing, not visible
 	float fontWidth, fontHeight;
-	int cols, rows;
 	SDL_Window *wp;
+	FT_Library ft;
+	FT_Face fontFace;
+	GLuint fontTexture;
+	GLuint fontVBO;
+	GLint fontTextureUnif, fontColorUnif;
+	GLint font_vcoordAttribute;
+	GLuint vertShader, fragShader;
+	GLuint shaderProgram;
 
-	void move(int y, int x);
-	void addch(std::string c);
-	void addstr(std::string str);
-	void mvaddch(int y, int x, std::string c);
-	void mvaddstr(int y, int x, std::string str);
-	void clear();
-	void markBlock(int sy, int sx, int ey, int ex);
+	void InitGL();
+	void RenderText(const char *text, float x, float y, float scaleX, float scaleY);
+	// void markBlock(int sy, int sx, int ey, int ex);
 public:
 	// SDL_Texture *texture;
-	std::vector<std::string> lines;
+	std::vector<Line> *lines;
 	SDL_Rect pos;
 
-	TextEditor(int ncols, int nrows, const char *fontPath, SDL_Rect npos, SDL_Window *nwp);
+	TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp);
 	~TextEditor();
 
 	void Draw();

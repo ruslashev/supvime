@@ -6,13 +6,13 @@
 
 int main()
 {
+	// TODO throw exceptions instead of `exit(..)`
 	File file("file.cpp");
 	Editor ed(&file);
 	Renderer rend(&ed);
-	rend.Update(file.lines);
 
 	while (1) {
-		rend.Update(file.lines);
+		rend.Update();
 		ed.ProcessKey(rend.getch());
 		if (ed.quit)
 			break;

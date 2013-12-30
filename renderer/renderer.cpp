@@ -49,7 +49,8 @@ Renderer::Renderer(Editor *nep)
 	*/
 
 	widgets.push_back(std::unique_ptr<TextEditor>(
-				new TextEditor(80, 25, "DroidSansMono.ttf", { 0, 0, 500, 400 }, window)));
+				new TextEditor("DroidSansMono.ttf", { 0, 0, 500, 400 }, window)));
+	widgets[0]->lines = &ep->lines;
 }
 
 void Renderer::UpdateTitle()
@@ -59,12 +60,11 @@ void Renderer::UpdateTitle()
 	SDL_SetWindowTitle(window, titleBuf);
 }
 
-void Renderer::Update(std::vector<std::string> &nlines)
+void Renderer::Update()
 {
 	// SDL_RenderClear(renderer);
 
 	for (auto &w : widgets) {
-		w->lines = nlines;
 		w->Draw();
 	}
 

@@ -1,5 +1,4 @@
 CXX = clang++
-CC  = clang
 
 OBJS = $(EDITOROBJS) $(FILEOBJS) $(RENDOBJS) obj/main.o
 EDITOROBJS = obj/editor.o
@@ -13,13 +12,10 @@ default: $(EXECNAME)
 	./$(EXECNAME)
 
 $(EXECNAME): $(OBJS)
-	$(CXX) -o $@ $^ -lGL -lGLEW -lSDL2
+	$(CXX) -o $@ $^ -lGL -lGLEW -lSDL2 -lfreetype
 
 obj/%.o: ./%.cpp
 	$(CXX) -c -o $@ $< -Wall -Wextra -g -std=c++0x
-
-obj/%.o: ./%.c
-	$(CC) -c -o $@ $< -Wall -Wextra -g
 
 clean:
 	-rm -f obj/*.o obj/renderer/*.o obj/renderer/widgets/*.o

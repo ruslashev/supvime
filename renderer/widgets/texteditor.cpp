@@ -6,145 +6,206 @@ const struct { unsigned char r, g, b; } palette[2] = {
 	{ 255, 255, 255 }
 };
 
-TextEditor::TextEditor(int ncols, int nrows, const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
+TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 {
-	cols = ncols;
-	rows = nrows;
-	screen.resize(rows);
-	for (int y = 0; y < rows; y++)
-		screen[y].cells.resize(cols);
-
 	GLenum err = glewInit();
 	if (err != GLEW_OK) {
 		printf("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
 		exit(1);
 	}
 
-	stash = glfonsCreate(512, 512, FONS_ZERO_TOPLEFT);
-	if (stash == NULL) {
-		puts("Failed to create font stash");
-		exit(2);
-	}
-
-	font = fonsAddFont(stash, "sans", fontPath);
-	if (font == FONS_INVALID) {
-		printf("Failed to load font \"%s\"\n", fontPath);
-		exit(2);
-	}
-
 	wp = nwp;
 	pos = npos;
+
+	if (FT_Init_FreeType(&ft)) {
+		puts("Failed to initialize FreeType");
+		exit(1);
+	}
+	if (FT_New_Face(ft, fontPath, 0, &fontFace)) {
+		printf("Failed to open font \"%s\"\n", fontPath);
+		exit(2);
+	}
+	FT_Set_Pixel_Sizes(fontFace, 0, 15);
+
+	InitGL();
+}
+
+void TextEditor::InitGL()
+{
+#define GLSL(src) "#version 120\n" #src
+	// TODO 2 attributes instead of 1
+	const char *vertShaderSrc = GLSL(
+		attribute vec4 coord;
+		varying vec2 texcoord;
+
+		void main() {
+			gl_Position = vec4(coord.xy, 0, 1);
+			texcoord = coord.zw;
+		}
+	);
+	const char *fragShaderSrc = GLSL(
+		varying vec2 texcoord;
+		uniform sampler2D tex0;
+		uniform vec4 color;
+
+		void main() {
+			gl_FragColor = vec4(1, 1, 1, texture2D(tex0, texcoord).a) * color;
+		}
+	);
+#undef GLSL
+	GLint success = GL_FALSE;
+	vertShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertShader, 1, &vertShaderSrc, NULL);
+	glCompileShader(vertShader);
+	glGetShaderiv(vertShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		puts("Failed to compile vertex shader");
+		GLint logLen = 0;
+		glGetShaderiv(vertShader, GL_INFO_LOG_LENGTH, &logLen);
+		// not catching because will catch in main() in future
+		char *log = new char [logLen];
+		glGetShaderInfoLog(vertShader, logLen, NULL, log);
+		puts(log);
+		delete [] log;
+		exit(2);
+	}
+	fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragShader, 1, &fragShaderSrc, NULL);
+	glCompileShader(fragShader);
+	glGetShaderiv(fragShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		puts("Failed to compile fragment shader");
+		GLint logLen = 0;
+		glGetShaderiv(fragShader, GL_INFO_LOG_LENGTH, &logLen);
+		char *log = new char [logLen];
+		glGetShaderInfoLog(fragShader, logLen, NULL, log);
+		puts(log);
+		delete [] log;
+		exit(2);
+	}
+
+	shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertShader);
+	glAttachShader(shaderProgram, fragShader);
+	glLinkProgram(shaderProgram);
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	if (!success) {
+		puts("Failed to create shader program");
+		exit(2);
+	}
+
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &fontTexture);
+	glBindTexture(GL_TEXTURE_2D, fontTexture);
+	fontTextureUnif = glGetUniformLocation(shaderProgram, "tex0");
+	if (fontTextureUnif == -1) {
+		printf("Failed to bind uniform \"tex0\"\n");
+		exit(2);
+	}
+	glUniform1i(fontTextureUnif, GL_TEXTURE0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glGenBuffers(1, &fontVBO);
+	glEnableVertexAttribArray(font_vcoordAttribute);
+	glBindBuffer(GL_ARRAY_BUFFER, fontVBO);
+	glVertexAttribPointer(font_vcoordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+	fontColorUnif = glGetUniformLocation(shaderProgram, "color");
+	if (fontColorUnif == -1) {
+		printf("Failed to bind uniform \"color\"\n");
+		exit(2);
+	}
+}
+
+void TextEditor::RenderText(const char *text, float x, float y, float sx, float sy)
+{
+	const char *p;
+	FT_GlyphSlot g = fontFace->glyph;
+
+	for (p = text; *p; p++) {
+		if (FT_Load_Char(fontFace, *p, FT_LOAD_RENDER))
+			continue;
+
+		glTexImage2D(GL_TEXTURE_2D,
+				0,
+				GL_ALPHA,
+				g->bitmap.width,
+				g->bitmap.rows,
+				0,
+				GL_ALPHA,
+				GL_UNSIGNED_BYTE,
+				g->bitmap.buffer
+				);
+
+		float x2 = x + g->bitmap_left * sx;
+		float y2 = -y - g->bitmap_top * sy;
+		float w = g->bitmap.width * sx;
+		float h = g->bitmap.rows * sy;
+
+		GLfloat box[4][4] = {
+			{x2,   -y2  , 0, 0},
+			{x2+w, -y2  , 1, 0},
+			{x2,   -y2-h, 0, 1},
+			{x2+w, -y2-h, 1, 1},
+		};
+
+		glBufferData(GL_ARRAY_BUFFER, sizeof(box), box, GL_DYNAMIC_DRAW);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+		x += (g->advance.x >> 6) * sx;
+		y += (g->advance.y >> 6) * sy;
+	}
 }
 
 void TextEditor::Draw()
 {
-	clear();
-
-	int i = 0;
-	for (; i < (int)lines.size(); i++)
-		mvaddstr(i, 0, lines[i]);
-	for (; i <= rows-3; i++)
-		mvaddstr(i, 0, "~");
-
-	// markBlock(rp->ep->curs.x, ep->curs.y, ep->curs.x, ep->curs.y);
-
 	glViewport(0, 0, 800, 600);
+	glUseProgram(shaderProgram);
+
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDisable(GL_TEXTURE_2D);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, 800, 600, 0, -1, 1);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glDisable(GL_DEPTH_TEST);
-	glColor4ub(255, 255, 255, 255);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_CULL_FACE);
+	// actual draw
+	{
+		GLfloat fg[4] = {1, 1, 1, 1};
+		glUniform4fv(fontColorUnif, 1, fg);
 
-	unsigned int fg = glfonsRGBA(255, 255, 255, 255);
-	unsigned int bg = glfonsRGBA(20,  20,  20,  255);
+		float sx = 2.0 / 800;
+		float sy = 2.0 / 600;
 
-	fonsClearState(stash);
-
-	fonsSetSize(stash, 16.f);
-	fonsSetFont(stash, font);
-	fonsVertMetrics(stash, NULL, NULL, &fontHeight);
-	float sx = pos.x, sy = pos.y+fontHeight;
-	fonsSetColor(stash, fg);
-	for (int y = 0; y < rows; y++) {
-		for (int x = 0; x < cols; x++) {
-			const char *glyph;
-			// if (screen[y][x].ch == "\t")
-			// 	glyph = "    ";
-			// else
-				glyph = screen[y][x].ch.c_str();
-			sx = fonsDrawText(stash, sx, sy, glyph, NULL);
-		}
-		sx = pos.x;
-		sy += fontHeight;
+		RenderText("The Quick Brown Fox Jumps Over The Lazy Dog",
+				-1 + 8 * sx,   1 - 50 * sy,    sx, sy);
+		// RenderText("В чащах юга жил бы цитрус? Да, но фальшивый экземпляр!",
+		// 		-1 + 8 * sx,   1 - 100 * sy,    sx, sy);
 	}
-
-	glEnable(GL_DEPTH_TEST);
 
 	SDL_GL_SwapWindow(wp);
+
+	for (size_t i = 0; i < lines->size(); i++)
+		lines->at(i).dirty = false;
 }
 
-void TextEditor::move(int y, int x)
-{
-	drwCurs = { (unsigned int)x, (unsigned int)y };
-}
-void TextEditor::addch(std::string c)
-{
-	// screen[drwCurs.y].dirty = true;
-	if ((int)drwCurs.x <= cols-1 && (int)drwCurs.y <= rows-1)
-		screen[drwCurs.y][drwCurs.x].ch = c;
-}
-void TextEditor::addstr(std::string str)
-{
-	for (int x = drwCurs.x; x < (int)drwCurs.x+(int)str.length(); x++) {
-		if (x >= cols)
-			break;
-		screen[drwCurs.y][x].ch = str[x-drwCurs.x];
-	}
-}
-void TextEditor::mvaddch(int y, int x, std::string c)
-{
-	move(y, x);
-	addch(c);
-}
-void TextEditor::mvaddstr(int y, int x, std::string str)
-{
-	move(y, x);
-	addstr(str);
-}
-
-void TextEditor::clear()
-{
-	const Cell emptyCell = Cell { " ", 0, 0 };
-	for (int y = 0; y < rows; y++)
-		for (int x = 0; x < cols; x++)
-			screen[y][x] = emptyCell;
-}
-
-void TextEditor::markBlock(int sx, int sy, int ex, int ey)
-{
-	for (int y = sy; y <= ey; y++) {
-		// screen[y].dirty = true;
-		for (int x = sx; x <= ex; x++)
-			screen[y][x].flags |= 8; // inverse for now
-	}
-}
+// void TextEditor::markBlock(int sx, int sy, int ex, int ey)
+// {
+// 	for (int y = sy; y <= ey; y++) {
+// 		// screen[y].dirty = true;
+// 		for (int x = sx; x <= ex; x++)
+// 			screen[y][x].flags |= 8; // inverse for now
+// 	}
+// }
 
 TextEditor::~TextEditor()
 {
 	// if (texture)
 	// 	SDL_DestroyTexture(texture);
-	glfonsDelete(stash);
+	glDeleteShader(vertShader);
+	glDeleteShader(fragShader);
+	glDeleteProgram(shaderProgram);
 }
 

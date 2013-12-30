@@ -7,6 +7,10 @@ Editor::Editor(File *nfp)
 	quit = false;
 
 	curs.x = curs.y = oldColumn = 0;
+
+	lines.reserve(fp->lines.size());
+	for (std::string &str : fp->lines)
+		lines.push_back(Line { /* dirty: */ true, /* str: */ str });
 }
 
 void Editor::ProcessKey(int key)
@@ -35,7 +39,7 @@ void Editor::ProcessNormalModeKey(int key)
 				oldColumn = --curs.x;
 			break;
 		case 'l':
-			if (curs.x < fp->lines[curs.y].size()-1)
+			if (curs.x < lines[curs.y].str.size()-1)
 				oldColumn = ++curs.x;
 			break;
 		case 'k':
@@ -43,7 +47,7 @@ void Editor::ProcessNormalModeKey(int key)
 				curs.y--;
 			break;
 		case 'j':
-			if (curs.y < fp->lines.size()-1)
+			if (curs.y < lines.size()-1)
 				curs.y++;
 			break;
 	}
@@ -57,7 +61,8 @@ void Editor::ProcessInsertModeKey(int key)
 			break;
 		default:
 			if (32 <= key && key <= 126) {
-				fp->lines[curs.y].insert(curs.x, 1, (char)key);
+				lines[curs.y].str.insert(curs.x, 1, (char)key);
+				lines[curs.y].dirty = true;
 				curs.x++;
 			}
 	}
