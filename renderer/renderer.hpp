@@ -1,6 +1,7 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
+#include "../errors.hpp"
 #include "../editor.hpp"
 #include "widgets/texteditor.hpp"
 
@@ -29,7 +30,7 @@ private:
 
 	void UpdateTitle();
 public:
-	Renderer(Editor *nep);
+	void Create(Editor *nep);
 	~Renderer();
 
 	void Update(); // includes redrawing

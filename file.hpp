@@ -1,6 +1,8 @@
 #ifndef FILE_HPP
 #define FILE_HPP
 
+#include "errors.hpp"
+
 #include <string>
 #include <fstream>
 #include <vector>
@@ -11,7 +13,7 @@ public:
 	std::vector<std::string> lines;
 	std::string filename;
 
-	File(std::string fileToOpen);
+	void Open(std::string fileToOpen);
 };
 
 #endif

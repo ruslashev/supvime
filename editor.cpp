@@ -1,6 +1,6 @@
 #include "editor.hpp"
 
-Editor::Editor(File *nfp)
+void Editor::Load(File *nfp)
 {
 	fp = nfp;
 	mode = NORMAL;

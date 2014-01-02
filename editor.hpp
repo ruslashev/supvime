@@ -23,7 +23,7 @@ public:
 	enum { NORMAL, INSERT } mode;
 	struct { unsigned int x, y; } curs;
 
-	Editor(File *nfp);
+	void Load(File *nfp);
 	void ProcessKey(int key);
 };
 

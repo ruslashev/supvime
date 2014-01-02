@@ -6,10 +6,16 @@
 
 int main()
 {
-	// TODO throw exceptions instead of `exit(..)`
-	File file("file.cpp");
-	Editor ed(&file);
-	Renderer rend(&ed);
+	File file;
+	Editor ed;
+	Renderer rend;
+	try {
+		file.Open("file.cpp");
+		ed.Load(&file);
+		rend.Create(&ed);
+	} catch (...) {
+		return 1;
+	}
 
 	while (1) {
 		rend.Update();

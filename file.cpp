@@ -3,14 +3,12 @@
 
 #include "file.hpp"
 
-File::File(std::string fileToOpen)
+void File::Open(std::string fileToOpen)
 {
 	filename = fileToOpen;
 	std::ifstream ifs(fileToOpen, std::ifstream::in);
-	if (!ifs) {
-		printf("No such file \"%s\"\n", fileToOpen.c_str());
-		exit(1);
-	}
+	if (!ifs)
+		throwf("No such file \"%s\"\n", fileToOpen.c_str());
 
 	std::string lineBuf = "";
 	while (getline(ifs, lineBuf)) {

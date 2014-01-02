@@ -1,14 +1,12 @@
 #include "renderer.hpp"
 
-Renderer::Renderer(Editor *nep)
+void Renderer::Create(Editor *nep)
 {
 	ep = nep;
 
 	// Initialize SDL
-	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-		printf("Failed to initialize SDL: %s\n", SDL_GetError());
-		exit(1);
-	}
+	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+		throwf("Failed to initialize SDL: %s\n", SDL_GetError());
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -24,17 +22,13 @@ Renderer::Renderer(Editor *nep)
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			800, 600,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-	if (window == NULL) {
-		printf("Failed to open a window: %s\n", SDL_GetError());
-		exit(1);
-	}
+	if (window == NULL)
+		throwf("Failed to open a window: %s\n", SDL_GetError());
 
 	// Initialize SDL_GL
 	ctxt = SDL_GL_CreateContext(window);
-	if (ctxt == NULL) {
-		printf("Failed to create OpenGL rendering context: %s\n", SDL_GetError());
-		exit(1);
-	}
+	if (ctxt == NULL)
+		throwf("Failed to create OpenGL rendering context: %s\n", SDL_GetError());
 	if (SDL_GL_SetSwapInterval(1) < 0)
 		printf("Warning: Unable to set VSync: %s\n", SDL_GetError());
 
@@ -42,10 +36,8 @@ Renderer::Renderer(Editor *nep)
 	// Create an SDL renderer
 	renderer = SDL_CreateRenderer(window, -1,
 			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	if (renderer == NULL) {
-		printf("Failed to create a renderer: %s\n", SDL_GetError());
-		exit(1);
-	}
+	if (renderer == NULL)
+		throwf("Failed to create a renderer: %s\n", SDL_GetError());
 	*/
 
 	widgets.push_back(std::unique_ptr<TextEditor>(

@@ -9,22 +9,16 @@ const struct { unsigned char r, g, b; } palette[2] = {
 TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 {
 	GLenum err = glewInit();
-	if (err != GLEW_OK) {
-		printf("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
-		exit(1);
-	}
+	if (err != GLEW_OK)
+		throwf("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
 
 	wp = nwp;
 	pos = npos;
 
-	if (FT_Init_FreeType(&ft)) {
-		puts("Failed to initialize FreeType");
-		exit(1);
-	}
-	if (FT_New_Face(ft, fontPath, 0, &fontFace)) {
-		printf("Failed to open font \"%s\"\n", fontPath);
-		exit(2);
-	}
+	if (FT_Init_FreeType(&ft))
+		throwf("Failed to initialize FreeType\n");
+	if (FT_New_Face(ft, fontPath, 0, &fontFace))
+		throwf("Failed to find font \"%s\"\n", fontPath);
 	FT_Set_Pixel_Sizes(fontFace, 0, 15);
 
 	InitGL();
@@ -67,7 +61,7 @@ void TextEditor::InitGL()
 		glGetShaderInfoLog(vertShader, logLen, NULL, log);
 		puts(log);
 		delete [] log;
-		exit(2);
+		throw;
 	}
 	fragShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragShader, 1, &fragShaderSrc, NULL);
@@ -81,7 +75,7 @@ void TextEditor::InitGL()
 		glGetShaderInfoLog(fragShader, logLen, NULL, log);
 		puts(log);
 		delete [] log;
-		exit(2);
+		throw;
 	}
 
 	shaderProgram = glCreateProgram();
@@ -89,19 +83,15 @@ void TextEditor::InitGL()
 	glAttachShader(shaderProgram, fragShader);
 	glLinkProgram(shaderProgram);
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		puts("Failed to create shader program");
-		exit(2);
-	}
+	if (!success)
+		throwf("Failed to create shader program\n");
 
 	glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &fontTexture);
 	glBindTexture(GL_TEXTURE_2D, fontTexture);
 	fontTextureUnif = glGetUniformLocation(shaderProgram, "tex0");
-	if (fontTextureUnif == -1) {
-		printf("Failed to bind uniform \"tex0\"\n");
-		exit(2);
-	}
+	if (fontTextureUnif == -1)
+		throwf("Failed to bind uniform \"tex0\"\n");
 	glUniform1i(fontTextureUnif, GL_TEXTURE0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -114,10 +104,8 @@ void TextEditor::InitGL()
 	glVertexAttribPointer(font_vcoordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
 	fontColorUnif = glGetUniformLocation(shaderProgram, "color");
-	if (fontColorUnif == -1) {
-		printf("Failed to bind uniform \"color\"\n");
-		exit(2);
-	}
+	if (fontColorUnif == -1)
+		throwf("Failed to bind uniform \"color\"\n");
 }
 
 void TextEditor::RenderText(const char *text, float x, float y, float sx, float sy)
