@@ -19,7 +19,9 @@ TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 		throwf("Failed to initialize FreeType\n");
 	if (FT_New_Face(ft, fontPath, 0, &fontFace))
 		throwf("Failed to find font \"%s\"\n", fontPath);
-	FT_Set_Pixel_Sizes(fontFace, 0, 15);
+	if (!FT_IS_FIXED_WIDTH(fontFace))
+		printf("Warning: Font face \"%s %s\" (%s) not fixed width!\n",
+				fontFace->family_name, fontFace->style_name, fontPath);
 
 	InitGL();
 }
@@ -46,7 +48,7 @@ void TextEditor::InitGL()
 		uniform vec4 bg;
 
 		void main() {
-			gl_FragColor = mix(bg, fg, texture2D(tex0, texcoord).a);
+			gl_FragColor = mix(bg, fg, texture2D(tex0, texcoord).r);
 		}
 	);
 #undef GLSL
@@ -66,7 +68,7 @@ void TextEditor::InitGL()
 
 void TextEditor::Draw()
 {
-	glViewport(pos.x, pos.y, pos.w, pos.h);
+	glViewport(0, 0, 800, 600);
 	glUseProgram(shaderProgram);
 
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -77,10 +79,9 @@ void TextEditor::Draw()
 
 	// actual draw
 	{
-		GLfloat white[4] = {1, 1, 1, 1};
-		GLfloat bg[4] = {0.1f, 0.1f, 0.1f, 1};
-		glUniform4fv(fontFGcolorUnif, 1, white);
-		glUniform4fv(fontBGcolorUnif, 1, bg);
+		setTextSize(46);
+		setTextForeground(255, 255, 255);
+		setTextBackground(100, 100, 100);
 
 		float sx = 2.0 / 800;
 		float sy = 2.0 / 600;
@@ -122,16 +123,9 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 		if (FT_Load_Char(fontFace, *p, FT_LOAD_RENDER))
 			continue;
 
-		glTexImage2D(GL_TEXTURE_2D,
-				0,
-				GL_ALPHA,
-				g->bitmap.width,
-				g->bitmap.rows,
-				0,
-				GL_ALPHA,
-				GL_UNSIGNED_BYTE,
-				g->bitmap.buffer
-				);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
+				g->bitmap.width, g->bitmap.rows, 0,
+				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
 		float x2 = x + g->bitmap_left * sx;
 		float y2 = -y - g->bitmap_top * sy;
@@ -164,6 +158,23 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 // 			screen[y][x].flags |= 8; // inverse for now
 // 	}
 // }
+
+void TextEditor::setTextForeground(unsigned char r, unsigned char g, unsigned char b)
+{
+	GLfloat color[4] = { r/255.f, g/255.f, b/255.f, 1 };
+	glUniform4fv(fontFGcolorUnif, 1, color);
+}
+
+void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned char b)
+{
+	GLfloat color[4] = { r/255.f, g/255.f, b/255.f, 1 };
+	glUniform4fv(fontBGcolorUnif, 1, color);
+}
+
+void TextEditor::setTextSize(unsigned int height)
+{
+	FT_Set_Pixel_Sizes(fontFace, 0, height);
+}
 
 GLuint TextEditor::CreateShader(GLenum type, const char *src)
 {

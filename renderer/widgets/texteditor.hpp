@@ -60,6 +60,9 @@ private:
 	GLuint CreateShaderProgram(GLuint vs, GLuint fs);
 	GLint BindUniform(GLuint shaderProgramP, const char *name);
 	void PrintLog(GLuint &shaderOrProg);
+	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
+	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
+	void setTextSize(unsigned int height);
 	// void markBlock(int sy, int sx, int ey, int ex);
 public:
 	// SDL_Texture *texture;
