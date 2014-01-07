@@ -62,7 +62,7 @@ private:
 	void PrintLog(GLuint &shaderOrProg);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
-	void setTextSize(unsigned int height);
+	void setTextSize(unsigned int size);
 	// void markBlock(int sy, int sx, int ey, int ex);
 public:
 	// SDL_Texture *texture;

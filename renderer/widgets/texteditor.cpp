@@ -1,16 +1,12 @@
 #include "texteditor.hpp"
 
-enum { BG, FG };
-const struct { unsigned char r, g, b; } palette[2] = {
-	{ 20,  20,  20  },
-	{ 255, 255, 255 }
-};
-
 TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 {
 	GLenum err = glewInit();
 	if (err != GLEW_OK)
 		throwf("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
+	if (!GLEW_VERSION_2_1)
+		throwf("Your graphics card's OpenGL version is less than 2.1\n");
 
 	wp = nwp;
 	pos = npos;
@@ -31,24 +27,22 @@ void TextEditor::InitGL()
 	glGenBuffers(1, &textVBO);
 
 #define GLSL(src) "#version 120\n" #src
-	// TODO 2 attributes instead of 1
 	const char *vertShaderSrc = GLSL(
 		attribute vec4 coord;
-		varying vec2 texcoord;
+		varying vec2 texCoord;
 
 		void main() {
 			gl_Position = vec4(coord.xy, 0, 1);
-			texcoord = coord.zw;
+			texCoord = coord.zw;
 		}
 	);
 	const char *fragShaderSrc = GLSL(
-		varying vec2 texcoord;
+		varying vec2 texCoord;
 		uniform sampler2D tex0;
-		uniform vec4 fg;
-		uniform vec4 bg;
+		uniform vec3 fg;
 
 		void main() {
-			gl_FragColor = mix(bg, fg, texture2D(tex0, texcoord).r);
+			gl_FragColor = vec4(fg, texture2D(tex0, texCoord).r);
 		}
 	);
 #undef GLSL
@@ -63,7 +57,7 @@ void TextEditor::InitGL()
 
 	fontTextureUnif = BindUniform(shaderProgram, "tex0");
 	fontFGcolorUnif = BindUniform(shaderProgram, "fg");
-	fontBGcolorUnif = BindUniform(shaderProgram, "bg");
+	// fontBGcolorUnif = BindUniform(shaderProgram, "bg");
 }
 
 void TextEditor::Draw()
@@ -86,8 +80,9 @@ void TextEditor::Draw()
 		float sx = 2.0 / 800;
 		float sy = 2.0 / 600;
 
-		RenderText("The Quick Brown Fox Jumps Over The Lazy Dog",
+		RenderText("The Quick, \"Brown\" Fox Jumps Over The Lazy Dog.",
 				-1 + 8 * sx,   1 - 50 * sy,    sx, sy);
+
 		// RenderText("В чащах юга жил бы цитрус? Да, но фальшивый экземпляр!",
 		// 		-1 + 8 * sx,   1 - 100 * sy,    sx, sy);
 	}
@@ -100,8 +95,8 @@ void TextEditor::Draw()
 
 void TextEditor::RenderText(const char *text, float x, float y, float sx, float sy)
 {
-	GLuint fontTexture;
 	glActiveTexture(GL_TEXTURE0);
+	GLuint fontTexture;
 	glGenTextures(1, &fontTexture);
 	glBindTexture(GL_TEXTURE_2D, fontTexture);
 	glUniform1i(fontTextureUnif, GL_TEXTURE0);
@@ -116,10 +111,9 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 	glBindBuffer(GL_ARRAY_BUFFER, textVBO);
 	glVertexAttribPointer(text_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-	const char *p;
-	FT_GlyphSlot g = fontFace->glyph;
+	const FT_GlyphSlot g = fontFace->glyph;
 
-	for (p = text; *p; p++) {
+	for (const char *p = text; *p != '\0'; p++) {
 		if (FT_Load_Char(fontFace, *p, FT_LOAD_RENDER))
 			continue;
 
@@ -127,23 +121,25 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 				g->bitmap.width, g->bitmap.rows, 0,
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
-		float x2 = x + g->bitmap_left * sx;
-		float y2 = -y - g->bitmap_top * sy;
-		float w = g->bitmap.width * sx;
-		float h = g->bitmap.rows * sy;
+		printf("'%c': width %2d, rows %2d, bitmap_left %2d, bitmap_top %2d, adv_x %ld\n",
+				*p, g->bitmap.width, g->bitmap.rows, g->bitmap_left, g->bitmap_top, g->advance.x >> 6);
+
+		const float x2 = x + g->bitmap_left * sx;
+		const float y2 = y + g->bitmap_top * sy;
+		const float w = g->bitmap.width * sx;
+		const float h = g->bitmap.rows * sy;
 
 		GLfloat quad[4][4] = {
-			{ x2,   -y2  , 0, 0 },
-			{ x2+w, -y2  , 1, 0 },
-			{ x2,   -y2-h, 0, 1 },
-			{ x2+w, -y2-h, 1, 1 },
+			{ x2,   y2  , 0, 0 },
+			{ x2+w, y2  , 1, 0 },
+			{ x2,   y2-h, 0, 1 },
+			{ x2+w, y2-h, 1, 1 },
 		};
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 		x += (g->advance.x >> 6) * sx;
-		y += (g->advance.y >> 6) * sy;
 	}
 
 	glDisableVertexAttribArray(text_coordAttribute);
@@ -161,19 +157,19 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 
 void TextEditor::setTextForeground(unsigned char r, unsigned char g, unsigned char b)
 {
-	GLfloat color[4] = { r/255.f, g/255.f, b/255.f, 1 };
-	glUniform4fv(fontFGcolorUnif, 1, color);
+	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
+	glUniform3fv(fontFGcolorUnif, 1, color);
 }
 
 void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned char b)
 {
-	GLfloat color[4] = { r/255.f, g/255.f, b/255.f, 1 };
-	glUniform4fv(fontBGcolorUnif, 1, color);
+	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
+	glUniform3fv(fontBGcolorUnif, 1, color);
 }
 
-void TextEditor::setTextSize(unsigned int height)
+void TextEditor::setTextSize(unsigned int size)
 {
-	FT_Set_Pixel_Sizes(fontFace, 0, height);
+	FT_Set_Pixel_Sizes(fontFace, size, size);
 }
 
 GLuint TextEditor::CreateShader(GLenum type, const char *src)
@@ -244,6 +240,7 @@ TextEditor::~TextEditor()
 	glDeleteShader(vertShader);
 	glDeleteShader(fragShader);
 	glDeleteProgram(shaderProgram);
+	FT_Done_Face(fontFace);
 	FT_Done_FreeType(ft);
 }
 

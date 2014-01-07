@@ -1,3 +1,9 @@
+/* TODO:
+ * Add licence
+ * Get rid of comments
+ * Add own exception type (not critical)
+*/
+
 #include "file.hpp"
 #include "renderer/renderer.hpp"
 #include "editor.hpp"
