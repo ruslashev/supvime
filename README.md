@@ -9,6 +9,8 @@ That is, it is (will be):
 3. Better than Gvim
 4. The Supreme Editor of all editors
 
+Vim + Sublime + Supreme = Supvime
+
 ### Technical Documentation
 
 Here's rough draft of how it works inside:
@@ -48,6 +50,7 @@ Supvime wouldn't exist without the following libraries:
 
 * [SDL 2](http://libsdl.org/)
 * OpenGL
+* [GLFW](http://www.glfw.org/)
 * [GLEW](http://glew.sourceforge.net/)
 * [FreeType](http://www.freetype.org/)
 
