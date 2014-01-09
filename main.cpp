@@ -1,7 +1,9 @@
 /* TODO:
  * Add licence
+ * Move OpenGL drawing/initializing code on frame begin to renderer's update from texteditor's
+ * Consistent variable naming (use fg_* or fg*)
  * Get rid of comments
- * Add own exception type (not critical)
+ * Maybe add own exception type
 */
 
 #include "file.hpp"

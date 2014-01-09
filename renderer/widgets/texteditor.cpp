@@ -24,46 +24,61 @@ TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 
 void TextEditor::InitGL()
 {
-	glGenBuffers(1, &textVBO);
+	glGenBuffers(1, &fg_textVBO);
+	glGenBuffers(1, &bg_textVBO);
 
 #define GLSL(src) "#version 120\n" #src
-	const char *vertShaderSrc = GLSL(
+	const char *ForegroundVertShaderSrc = GLSL(
 		attribute vec4 coord;
 		varying vec2 texCoord;
-
 		void main() {
 			gl_Position = vec4(coord.xy, 0, 1);
 			texCoord = coord.zw;
 		}
 	);
-	const char *fragShaderSrc = GLSL(
+
+	const char *ForegroundFragShaderSrc = GLSL(
 		varying vec2 texCoord;
 		uniform sampler2D tex0;
 		uniform vec3 fg;
-
 		void main() {
 			gl_FragColor = vec4(fg, texture2D(tex0, texCoord).r);
 		}
 	);
+
+	const char *BackgroundVertShaderSrc = GLSL(
+		attribute vec2 vcoord;
+		void main() {
+			gl_Position = vec4(vcoord, 0, 1);
+		}
+	);
+
+	const char *BacgroundFragShaderSrc = GLSL(
+		uniform vec3 bg;
+		void main() {
+			gl_FragColor = vec4(bg.x, 1, 1, 1);
+		}
+	);
 #undef GLSL
-	vertShader = CreateShader(GL_VERTEX_SHADER, vertShaderSrc);
-	fragShader = CreateShader(GL_FRAGMENT_SHADER, fragShaderSrc);
+	fgVertShader = CreateShader(GL_VERTEX_SHADER, ForegroundVertShaderSrc);
+	fgFragShader = CreateShader(GL_FRAGMENT_SHADER, ForegroundFragShaderSrc);
+	fgShaderProgram = CreateShaderProgram(fgVertShader, fgFragShader);
+	glUseProgram(fgShaderProgram);
+	fg_coordAttribute = BindAttribute(fgShaderProgram, "coord");
+	fg_textureUnif = BindUniform(fgShaderProgram, "tex0");
+	fg_FGcolorUnif = BindUniform(fgShaderProgram, "fg");
 
-	shaderProgram = CreateShaderProgram(vertShader, fragShader);
-
-	text_coordAttribute = glGetAttribLocation(shaderProgram, "coord");
-	if (text_coordAttribute == -1)
-		throwf("Failed to bind attribute \"coord\"\n");
-
-	fontTextureUnif = BindUniform(shaderProgram, "tex0");
-	fontFGcolorUnif = BindUniform(shaderProgram, "fg");
-	// fontBGcolorUnif = BindUniform(shaderProgram, "bg");
+	bgVertShader = CreateShader(GL_VERTEX_SHADER, BackgroundVertShaderSrc);
+	bgFragShader = CreateShader(GL_FRAGMENT_SHADER, BacgroundFragShaderSrc);
+	bgShaderProgram = CreateShaderProgram(bgVertShader, bgFragShader);
+	glUseProgram(bgShaderProgram);
+	bg_vcoordAttribute = BindAttribute(bgShaderProgram, "vcoord");
+	bg_BGcolorUnif = BindUniform(bgShaderProgram, "bg");
 }
 
 void TextEditor::Draw()
 {
 	glViewport(0, 0, 800, 600);
-	glUseProgram(shaderProgram);
 
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -82,9 +97,6 @@ void TextEditor::Draw()
 
 		RenderText("The Quick, \"Brown\" Fox Jumps Over The Lazy Dog.",
 				-1 + 8 * sx,   1 - 50 * sy,    sx, sy);
-
-		// RenderText("В чащах юга жил бы цитрус? Да, но фальшивый экземпляр!",
-		// 		-1 + 8 * sx,   1 - 100 * sy,    sx, sy);
 	}
 
 	SDL_GL_SwapWindow(wp);
@@ -95,11 +107,12 @@ void TextEditor::Draw()
 
 void TextEditor::RenderText(const char *text, float x, float y, float sx, float sy)
 {
+	glUseProgram(fgShaderProgram);
 	glActiveTexture(GL_TEXTURE0);
 	GLuint fontTexture;
 	glGenTextures(1, &fontTexture);
 	glBindTexture(GL_TEXTURE_2D, fontTexture);
-	glUniform1i(fontTextureUnif, GL_TEXTURE0);
+	glUniform1i(fg_textureUnif, GL_TEXTURE0);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -107,9 +120,14 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	glEnableVertexAttribArray(text_coordAttribute);
-	glBindBuffer(GL_ARRAY_BUFFER, textVBO);
-	glVertexAttribPointer(text_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(fg_coordAttribute);
+	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
+	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+	glUseProgram(bgShaderProgram);
+	glEnableVertexAttribArray(bg_vcoordAttribute);
+	glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
+	glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
 	const FT_GlyphSlot g = fontFace->glyph;
 
@@ -117,54 +135,63 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 		if (FT_Load_Char(fontFace, *p, FT_LOAD_RENDER))
 			continue;
 
+		const float x2 = x + g->bitmap_left * sx;
+		const float y2 = y + g->bitmap_top * sy;
+		const float w  = g->bitmap.width * sx;
+		const float h  = g->bitmap.rows* sy;
+		const int adv  = g->advance.x;
+
+		GLfloat bgQuad[4][2] = {
+			{ x,     y2   },
+			{ x+adv, y2   },
+			{ x,     y2-h },
+			{ x+adv, y2-h },
+		};
+
+		glUseProgram(bgShaderProgram);
+		glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(bgQuad), bgQuad, GL_DYNAMIC_DRAW);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 2);
+		glDisableVertexAttribArray(bg_vcoordAttribute);
+
+		// -------------------- foreground -----
+		glUseProgram(fgShaderProgram);
+
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
 				g->bitmap.width, g->bitmap.rows, 0,
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
-		printf("'%c': width %2d, rows %2d, bitmap_left %2d, bitmap_top %2d, adv_x %ld\n",
-				*p, g->bitmap.width, g->bitmap.rows, g->bitmap_left, g->bitmap_top, g->advance.x >> 6);
-
-		const float x2 = x + g->bitmap_left * sx;
-		const float y2 = y + g->bitmap_top * sy;
-		const float w = g->bitmap.width * sx;
-		const float h = g->bitmap.rows * sy;
-
-		GLfloat quad[4][4] = {
+		GLfloat fgQuad[4][4] = {
 			{ x2,   y2  , 0, 0 },
 			{ x2+w, y2  , 1, 0 },
 			{ x2,   y2-h, 0, 1 },
 			{ x2+w, y2-h, 1, 1 },
 		};
 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_DYNAMIC_DRAW);
+		glUseProgram(fgShaderProgram);
+		glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(fgQuad), fgQuad, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-		x += (g->advance.x >> 6) * sx;
+		x += (adv >> 6) * sx;
 	}
 
-	glDisableVertexAttribArray(text_coordAttribute);
+	glDisableVertexAttribArray(fg_coordAttribute);
 	glDeleteTextures(1, &fontTexture);
 }
 
-// void TextEditor::markBlock(int sx, int sy, int ex, int ey)
-// {
-// 	for (int y = sy; y <= ey; y++) {
-// 		// screen[y].dirty = true;
-// 		for (int x = sx; x <= ex; x++)
-// 			screen[y][x].flags |= 8; // inverse for now
-// 	}
-// }
-
 void TextEditor::setTextForeground(unsigned char r, unsigned char g, unsigned char b)
 {
+	glUseProgram(fgShaderProgram);
 	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
-	glUniform3fv(fontFGcolorUnif, 1, color);
+	glUniform3fv(fg_FGcolorUnif, 1, color);
 }
 
 void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned char b)
 {
+	glUseProgram(bgShaderProgram);
 	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
-	glUniform3fv(fontBGcolorUnif, 1, color);
+	glUniform3fv(bg_BGcolorUnif, 1, color);
 }
 
 void TextEditor::setTextSize(unsigned int size)
@@ -231,15 +258,24 @@ GLint TextEditor::BindUniform(GLuint shaderProgramP, const char *name)
 	return unif;
 }
 
+GLint TextEditor::BindAttribute(GLuint shaderProgramP, const char *name)
+{
+	GLint attrib = glGetAttribLocation(shaderProgramP, name);
+	if (attrib == -1)
+		throwf("Failed to bind attribute \"%s\"\n", name);
+	return attrib;
+}
+
 TextEditor::~TextEditor()
 {
-	// if (texture)
-	// 	SDL_DestroyTexture(texture);
-	// glDisableVertexAttribArray(0);
-	glDeleteBuffers(1, &textVBO);
-	glDeleteShader(vertShader);
-	glDeleteShader(fragShader);
-	glDeleteProgram(shaderProgram);
+	glDeleteBuffers(1, &fg_textVBO);
+	glDeleteBuffers(1, &bg_textVBO);
+	glDeleteProgram(fgShaderProgram);
+	glDeleteShader(fgVertShader);
+	glDeleteShader(fgFragShader);
+	glDeleteProgram(bgShaderProgram);
+	glDeleteShader(bgVertShader);
+	glDeleteShader(bgFragShader);
 	FT_Done_Face(fontFace);
 	FT_Done_FreeType(ft);
 }
