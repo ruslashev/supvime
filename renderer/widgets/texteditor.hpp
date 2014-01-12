@@ -53,6 +53,7 @@ private:
 	GLint fg_coordAttribute, bg_vcoordAttribute;
 	GLuint fgVertShader, fgFragShader, bgVertShader, bgFragShader;
 	GLuint fgShaderProgram, bgShaderProgram;
+	unsigned int cellHeight;
 
 	void InitGL();
 	void RenderText(const char *text, float x, float y, float scaleX, float scaleY);
@@ -64,9 +65,7 @@ private:
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextSize(unsigned int size);
-	// void markBlock(int sy, int sx, int ey, int ex);
 public:
-	// SDL_Texture *texture;
 	std::vector<Line> *lines;
 	SDL_Rect pos;
 

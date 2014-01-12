@@ -16,8 +16,11 @@ TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 	if (FT_New_Face(ft, fontPath, 0, &fontFace))
 		throwf("Failed to find font \"%s\"\n", fontPath);
 	if (!FT_IS_FIXED_WIDTH(fontFace))
-		printf("Warning: Font face \"%s %s\" (%s) not fixed width!\n",
+		printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
 				fontFace->family_name, fontFace->style_name, fontPath);
+	// if (!FT_HAS_VERTICAL(fontFace))
+	// 	printf("Warning: Font face \"%s %s\" (%s) does not have vertical metrics!\n",
+	// 			fontFace->family_name, fontFace->style_name, fontPath);
 
 	InitGL();
 }
@@ -56,14 +59,13 @@ void TextEditor::InitGL()
 	const char *BacgroundFragShaderSrc = GLSL(
 		uniform vec3 bg;
 		void main() {
-			gl_FragColor = vec4(bg.x, 1, 1, 1);
+			gl_FragColor = vec4(bg, 1);
 		}
 	);
 #undef GLSL
 	fgVertShader = CreateShader(GL_VERTEX_SHADER, ForegroundVertShaderSrc);
 	fgFragShader = CreateShader(GL_FRAGMENT_SHADER, ForegroundFragShaderSrc);
 	fgShaderProgram = CreateShaderProgram(fgVertShader, fgFragShader);
-	glUseProgram(fgShaderProgram);
 	fg_coordAttribute = BindAttribute(fgShaderProgram, "coord");
 	fg_textureUnif = BindUniform(fgShaderProgram, "tex0");
 	fg_FGcolorUnif = BindUniform(fgShaderProgram, "fg");
@@ -71,7 +73,6 @@ void TextEditor::InitGL()
 	bgVertShader = CreateShader(GL_VERTEX_SHADER, BackgroundVertShaderSrc);
 	bgFragShader = CreateShader(GL_FRAGMENT_SHADER, BacgroundFragShaderSrc);
 	bgShaderProgram = CreateShaderProgram(bgVertShader, bgFragShader);
-	glUseProgram(bgShaderProgram);
 	bg_vcoordAttribute = BindAttribute(bgShaderProgram, "vcoord");
 	bg_BGcolorUnif = BindUniform(bgShaderProgram, "bg");
 }
@@ -89,14 +90,21 @@ void TextEditor::Draw()
 	// actual draw
 	{
 		setTextSize(46);
-		setTextForeground(255, 255, 255);
-		setTextBackground(100, 100, 100);
+		setTextForeground(0, 0, 0);
+		setTextBackground(255, 255, 255);
 
 		float sx = 2.0 / 800;
 		float sy = 2.0 / 600;
 
-		RenderText("The Quick, \"Brown\" Fox Jumps Over The Lazy Dog.",
+		RenderText("T", //he Quick, \"Brown\" Fox Jumps Over The Lazy Dog.",
 				-1 + 8 * sx,   1 - 50 * sy,    sx, sy);
+
+		RenderText("The Quick, \"Brown\" Fox Jumps Over The Lazy Dog.",
+				-1 + 8 * sx,   1 - 200 * sy,    sx, sy);
+
+		setTextSize(15);
+		RenderText(lines->at(0).str.c_str(),
+				-1 + 40 * sx,   1 - 400 * sy,    sx, sy);
 	}
 
 	SDL_GL_SwapWindow(wp);
@@ -120,42 +128,44 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	glEnableVertexAttribArray(fg_coordAttribute);
-	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
-	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-	glUseProgram(bgShaderProgram);
-	glEnableVertexAttribArray(bg_vcoordAttribute);
-	glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
-	glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
 	const FT_GlyphSlot g = fontFace->glyph;
+	if (FT_Load_Char(fontFace, 'A', FT_LOAD_RENDER))
+		throwf("failed to load char\n");
+	const float adv = (g->advance.x >> 6)*sx;
+	if (FT_Load_Char(fontFace, 'A', FT_LOAD_RENDER | FT_LOAD_VERTICAL_LAYOUT))
+		throwf("failed to load char\n");
+	const float vadv = (g->advance.y >> 6)*sy;
+	printf("horz: %f\nvert: %f\ncell: %u\nclls: %f\n\n", adv, vadv, cellHeight, cellHeight*sy);
 
 	for (const char *p = text; *p != '\0'; p++) {
 		if (FT_Load_Char(fontFace, *p, FT_LOAD_RENDER))
 			continue;
 
-		const float x2 = x + g->bitmap_left * sx;
-		const float y2 = y + g->bitmap_top * sy;
-		const float w  = g->bitmap.width * sx;
-		const float h  = g->bitmap.rows* sy;
-		const int adv  = g->advance.x;
+		const float x2 = x + g->bitmap_left*sx;
+		const float y2 = y + g->bitmap_top*sy;
+		const float w  = g->bitmap.width*sx;
+		const float h  = g->bitmap.rows*sy;
 
 		GLfloat bgQuad[4][2] = {
-			{ x,     y2   },
-			{ x+adv, y2   },
-			{ x,     y2-h },
-			{ x+adv, y2-h },
+			{ x,     y-vadv*0.35f }, // fed up
+			{ x+adv, y-vadv*0.35f },
+			{ x,     y+vadv },
+			{ x+adv, y+vadv },
 		};
 
 		glUseProgram(bgShaderProgram);
+		glEnableVertexAttribArray(bg_vcoordAttribute);
 		glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
+		glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(bgQuad), bgQuad, GL_DYNAMIC_DRAW);
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, 2);
-		glDisableVertexAttribArray(bg_vcoordAttribute);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 		// -------------------- foreground -----
 		glUseProgram(fgShaderProgram);
+
+		glEnableVertexAttribArray(fg_coordAttribute);
+		glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
+		glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
 				g->bitmap.width, g->bitmap.rows, 0,
@@ -168,14 +178,15 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 			{ x2+w, y2-h, 1, 1 },
 		};
 
-		glUseProgram(fgShaderProgram);
-		glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(fgQuad), fgQuad, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-		x += (adv >> 6) * sx;
+		printf("%c", *p);
+		x += adv;
 	}
+	printf("\n");
 
+	glDisableVertexAttribArray(bg_vcoordAttribute);
 	glDisableVertexAttribArray(fg_coordAttribute);
 	glDeleteTextures(1, &fontTexture);
 }
@@ -196,6 +207,7 @@ void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned ch
 
 void TextEditor::setTextSize(unsigned int size)
 {
+	cellHeight = size;
 	FT_Set_Pixel_Sizes(fontFace, size, size);
 }
 
@@ -222,7 +234,7 @@ GLuint TextEditor::CreateShaderProgram(GLuint vs, GLuint fs)
 	glAttachShader(program, vs);
 	glAttachShader(program, fs);
 	glLinkProgram(program);
-	GLint success = GL_FALSE;
+	GLint success;
 	glGetProgramiv(program, GL_LINK_STATUS, &success);
 	if (!success) {
 		PrintLog(program);
@@ -269,10 +281,10 @@ GLint TextEditor::BindAttribute(GLuint shaderProgramP, const char *name)
 TextEditor::~TextEditor()
 {
 	glDeleteBuffers(1, &fg_textVBO);
-	glDeleteBuffers(1, &bg_textVBO);
 	glDeleteProgram(fgShaderProgram);
 	glDeleteShader(fgVertShader);
 	glDeleteShader(fgFragShader);
+	glDeleteBuffers(1, &bg_textVBO);
 	glDeleteProgram(bgShaderProgram);
 	glDeleteShader(bgVertShader);
 	glDeleteShader(bgFragShader);
