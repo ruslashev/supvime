@@ -56,7 +56,7 @@ private:
 	unsigned int cellHeight;
 
 	void InitGL();
-	void RenderText(const char *text, float x, float y, float scaleX, float scaleY);
+	void RenderText(const char *text, int x, int y, const float sx, float sy);
 	GLuint CreateShader(GLenum type, const char *src);
 	GLuint CreateShaderProgram(GLuint vs, GLuint fs);
 	GLint BindUniform(GLuint shaderProgramP, const char *name);

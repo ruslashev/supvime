@@ -18,9 +18,6 @@ TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
 	if (!FT_IS_FIXED_WIDTH(fontFace))
 		printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
 				fontFace->family_name, fontFace->style_name, fontPath);
-	// if (!FT_HAS_VERTICAL(fontFace))
-	// 	printf("Warning: Font face \"%s %s\" (%s) does not have vertical metrics!\n",
-	// 			fontFace->family_name, fontFace->style_name, fontPath);
 
 	InitGL();
 }
@@ -93,18 +90,15 @@ void TextEditor::Draw()
 		setTextForeground(0, 0, 0);
 		setTextBackground(255, 255, 255);
 
-		float sx = 2.0 / 800;
-		float sy = 2.0 / 600;
+		const float sx = 2.0 / 800;
+		const float sy = 2.0 / 600;
 
-		RenderText("T", //he Quick, \"Brown\" Fox Jumps Over The Lazy Dog.",
-				-1 + 8 * sx,   1 - 50 * sy,    sx, sy);
+		RenderText("T", 1, 10, sx, sy);
 
-		RenderText("The Quick, \"Brown\" Fox Jumps Over The Lazy Dog.",
-				-1 + 8 * sx,   1 - 200 * sy,    sx, sy);
+		RenderText("The Quick, \"Brown\" Fox Jumps Over The Lazy Dog.", 1, 200, sx, sy);
 
 		setTextSize(15);
-		RenderText(lines->at(0).str.c_str(),
-				-1 + 40 * sx,   1 - 400 * sy,    sx, sy);
+		RenderText(lines->at(0).str.c_str(), 1, 400, sx, sy);
 	}
 
 	SDL_GL_SwapWindow(wp);
@@ -113,7 +107,7 @@ void TextEditor::Draw()
 		lines->at(i).dirty = false;
 }
 
-void TextEditor::RenderText(const char *text, float x, float y, float sx, float sy)
+void TextEditor::RenderText(const char *text, int x, int y, const float sx, float sy)
 {
 	glUseProgram(fgShaderProgram);
 	glActiveTexture(GL_TEXTURE0);
@@ -128,29 +122,25 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
+	float dx = -1 + x*sx;
+	const float dy = -1 + y*sy;
 	const FT_GlyphSlot g = fontFace->glyph;
-	if (FT_Load_Char(fontFace, 'A', FT_LOAD_RENDER))
-		throwf("failed to load char\n");
-	const float adv = (g->advance.x >> 6)*sx;
-	if (FT_Load_Char(fontFace, 'A', FT_LOAD_RENDER | FT_LOAD_VERTICAL_LAYOUT))
-		throwf("failed to load char\n");
-	const float vadv = (g->advance.y >> 6)*sy;
-	printf("horz: %f\nvert: %f\ncell: %u\nclls: %f\n\n", adv, vadv, cellHeight, cellHeight*sy);
-
 	for (const char *p = text; *p != '\0'; p++) {
 		if (FT_Load_Char(fontFace, *p, FT_LOAD_RENDER))
 			continue;
 
-		const float x2 = x + g->bitmap_left*sx;
-		const float y2 = y + g->bitmap_top*sy;
+		const float x2 = dx + g->bitmap_left*sx;
+		const float y2 = dy + g->bitmap_top*sy;
 		const float w  = g->bitmap.width*sx;
 		const float h  = g->bitmap.rows*sy;
+		const float adv = (g->advance.x >> 6)*sx;
+		const float vadv = cellHeight*sy;
 
 		GLfloat bgQuad[4][2] = {
-			{ x,     y-vadv*0.35f }, // fed up
-			{ x+adv, y-vadv*0.35f },
-			{ x,     y+vadv },
-			{ x+adv, y+vadv },
+			{ dx,     dy-vadv*0.35f }, // fed up
+			{ dx+adv, dy-vadv*0.35f },
+			{ dx,     dy+vadv },
+			{ dx+adv, dy+vadv },
 		};
 
 		glUseProgram(bgShaderProgram);
@@ -182,7 +172,7 @@ void TextEditor::RenderText(const char *text, float x, float y, float sx, float 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 		printf("%c", *p);
-		x += adv;
+		dx += adv;
 	}
 	printf("\n");
 
