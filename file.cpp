@@ -2,6 +2,7 @@
 // Files I/O operations - read, write etc
 
 #include "file.hpp"
+#include "errors.hpp"
 
 void File::Open(std::string fileToOpen)
 {
@@ -13,7 +14,6 @@ void File::Open(std::string fileToOpen)
 	std::string lineBuf = "";
 	while (getline(ifs, lineBuf)) {
 		lines.push_back(lineBuf);
-		// printf("%s\n", lineBuf.c_str());
 	}
 
 	ifs.close();

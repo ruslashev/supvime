@@ -1,15 +1,15 @@
 #include "texteditor.hpp"
+#include "../../editor.hpp"
+#include "../../glutils.hpp"
+#include "../../errors.hpp"
 
-TextEditor::TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp)
+TextEditor::TextEditor(const char *fontPath, SDL_Window *nwp) : wp(nwp)
 {
 	GLenum err = glewInit();
 	if (err != GLEW_OK)
 		throwf("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
 	if (!GLEW_VERSION_2_1)
 		throwf("Your graphics card's OpenGL version is less than 2.1\n");
-
-	wp = nwp;
-	pos = npos;
 
 	if (FT_Init_FreeType(&ft))
 		throwf("Failed to initialize FreeType\n");
@@ -27,7 +27,6 @@ void TextEditor::InitGL()
 	glGenBuffers(1, &fg_textVBO);
 	glGenBuffers(1, &bg_textVBO);
 
-#define GLSL(src) "#version 120\n" #src
 	const char *ForegroundVertShaderSrc = GLSL(
 		attribute vec4 coord;
 		varying vec2 texCoord;
@@ -59,7 +58,7 @@ void TextEditor::InitGL()
 			gl_FragColor = vec4(bg, 1);
 		}
 	);
-#undef GLSL
+
 	fgVertShader = CreateShader(GL_VERTEX_SHADER, ForegroundVertShaderSrc);
 	fgFragShader = CreateShader(GL_FRAGMENT_SHADER, ForegroundFragShaderSrc);
 	fgShaderProgram = CreateShaderProgram(fgVertShader, fgFragShader);
@@ -76,29 +75,16 @@ void TextEditor::InitGL()
 
 void TextEditor::Draw()
 {
-	glViewport(0, 0, 800, 600);
-
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 	const float sx = 2.f / 800;
 	const float sy = 2.f / 600;
 
-	// actual draw
-	{
-		setTextSize(14);
-		setTextForeground(0, 0, 0);
-		setTextBackground(255, 255, 255);
+	setTextSize(14);
+	setTextForeground(0, 0, 0);
+	setTextBackground(255, 255, 255);
 
-		for (size_t i = 0; i < lines->size(); i++) {
-			RenderText(lines->at(i).str.c_str(), 0, i*cellHeight*1.35f, sx, sy);
-		}
+	for (size_t i = 0; i < lines->size(); i++) {
+		RenderText(lines->at(i).str.c_str(), 0, i*cellHeight*1.35f, sx, sy);
 	}
-
-	SDL_GL_SwapWindow(wp);
 
 	for (size_t i = 0; i < lines->size(); i++)
 		lines->at(i).dirty = false;
@@ -196,73 +182,6 @@ void TextEditor::setTextSize(unsigned int size)
 {
 	cellHeight = size;
 	FT_Set_Pixel_Sizes(fontFace, size, size);
-}
-
-GLuint TextEditor::CreateShader(GLenum type, const char *src)
-{
-	GLuint shader = glCreateShader(type);
-	glShaderSource(shader, 1, &src, NULL);
-	glCompileShader(shader);
-
-	GLint success;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		PrintLog(shader);
-		throwf("Failed to compile %s shader\n",
-				type == GL_VERTEX_SHADER ? "vertex" : "fragment");
-	}
-
-	return shader;
-}
-
-GLuint TextEditor::CreateShaderProgram(GLuint vs, GLuint fs)
-{
-	GLuint program = glCreateProgram();
-	glAttachShader(program, vs);
-	glAttachShader(program, fs);
-	glLinkProgram(program);
-	GLint success;
-	glGetProgramiv(program, GL_LINK_STATUS, &success);
-	if (!success) {
-		PrintLog(program);
-		throwf("Failed to create shader program\n");
-	}
-	return program;
-}
-
-void TextEditor::PrintLog(GLuint &shaderOrProg)
-{
-	GLint logLen = 0;
-	char *log;
-
-	if (glIsShader(shaderOrProg)) {
-		glGetShaderiv(shaderOrProg, GL_INFO_LOG_LENGTH, &logLen);
-		log = new char [logLen];
-		glGetShaderInfoLog(shaderOrProg, logLen, NULL, log);
-	} else {
-		glGetProgramiv(shaderOrProg, GL_INFO_LOG_LENGTH, &logLen);
-		log = new char [logLen];
-		glGetProgramInfoLog(shaderOrProg, logLen, NULL, log);
-	}
-
-	puts(log);
-	delete [] log;
-}
-
-GLint TextEditor::BindUniform(GLuint shaderProgramP, const char *name)
-{
-	GLint unif = glGetUniformLocation(shaderProgramP, name);
-	if (unif == -1)
-		throwf("Failed to bind uniform \"%s\"\n", name);
-	return unif;
-}
-
-GLint TextEditor::BindAttribute(GLuint shaderProgramP, const char *name)
-{
-	GLint attrib = glGetAttribLocation(shaderProgramP, name);
-	if (attrib == -1)
-		throwf("Failed to bind attribute \"%s\"\n", name);
-	return attrib;
 }
 
 TextEditor::~TextEditor()

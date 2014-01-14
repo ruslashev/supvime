@@ -1,8 +1,6 @@
 #ifndef FILE_HPP
 #define FILE_HPP
 
-#include "errors.hpp"
-
 #include <string>
 #include <fstream>
 #include <vector>

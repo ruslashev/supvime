@@ -1,9 +1,8 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
-#include "../errors.hpp"
-#include "../editor.hpp"
 #include "widgets/texteditor.hpp"
+#include "../editor.hpp"
 
 #include <vector>
 #include <string>
@@ -23,7 +22,6 @@ class Renderer
 private:
 	Editor *ep;
 	SDL_Window *window;
-	// SDL_Renderer *renderer;
 	SDL_GLContext ctxt;
 	SDL_Event event;
 	std::vector<std::unique_ptr<TextEditor>> widgets; // BaseDrawableWidget> widgets;
@@ -33,7 +31,7 @@ public:
 	void Create(Editor *nep);
 	~Renderer();
 
-	void Update(); // includes redrawing
+	void Update();
 	char getch();
 };
 

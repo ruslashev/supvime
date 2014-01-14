@@ -44,8 +44,6 @@ struct DrawableLine
 class TextEditor// : public BaseDrawableWidget
 {
 private:
-	SDL_Window *wp;
-
 	FT_Library ft;
 	FT_Face fontFace;
 	GLuint fg_textVBO, bg_textVBO;
@@ -57,19 +55,13 @@ private:
 
 	void InitGL();
 	void RenderText(const char *text, int x, int y, const float sx, float sy);
-	GLuint CreateShader(GLenum type, const char *src);
-	GLuint CreateShaderProgram(GLuint vs, GLuint fs);
-	GLint BindUniform(GLuint shaderProgramP, const char *name);
-	GLint BindAttribute(GLuint shaderProgramP, const char *name);
-	void PrintLog(GLuint &shaderOrProg);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextSize(unsigned int size);
 public:
 	std::vector<Line> *lines;
-	SDL_Rect pos;
 
-	TextEditor(const char *fontPath, SDL_Rect npos, SDL_Window *nwp);
+	TextEditor(const char *fontPath, SDL_Window *nwp);
 	~TextEditor();
 
 	void Draw();

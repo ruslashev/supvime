@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "../errors.hpp"
 
 void Renderer::Create(Editor *nep)
 {
@@ -41,7 +42,7 @@ void Renderer::Create(Editor *nep)
 	*/
 
 	widgets.push_back(std::unique_ptr<TextEditor>(
-				new TextEditor("symlink-to-font", { 10, 20, 500, 400 }, window)));
+				new TextEditor("symlink-to-font", window)));
 	widgets[0]->lines = &ep->lines;
 }
 
@@ -54,13 +55,20 @@ void Renderer::UpdateTitle()
 
 void Renderer::Update()
 {
-	// SDL_RenderClear(renderer);
+	glViewport(0, 0, 800, 600);
+
+	const float grayShade = 0.075f;
+	glClearColor(grayShade, grayShade, grayShade, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	for (auto &w : widgets) {
 		w->Draw();
 	}
 
-	// SDL_RenderPresent(renderer);
+	SDL_GL_SwapWindow(window);
 
 	UpdateTitle();
 }
