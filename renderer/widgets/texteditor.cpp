@@ -84,21 +84,18 @@ void TextEditor::Draw()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+	const float sx = 2.f / 800;
+	const float sy = 2.f / 600;
+
 	// actual draw
 	{
-		setTextSize(46);
+		setTextSize(14);
 		setTextForeground(0, 0, 0);
 		setTextBackground(255, 255, 255);
 
-		const float sx = 2.0 / 800;
-		const float sy = 2.0 / 600;
-
-		RenderText("T", 1, 10, sx, sy);
-
-		RenderText("The Quick, \"Brown\" Fox Jumps Over The Lazy Dog.", 1, 200, sx, sy);
-
-		setTextSize(15);
-		RenderText(lines->at(0).str.c_str(), 1, 400, sx, sy);
+		for (size_t i = 0; i < lines->size(); i++) {
+			RenderText(lines->at(i).str.c_str(), 0, i*cellHeight*1.35f, sx, sy);
+		}
 	}
 
 	SDL_GL_SwapWindow(wp);
@@ -122,8 +119,9 @@ void TextEditor::RenderText(const char *text, int x, int y, const float sx, floa
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
+	const float vadv = cellHeight*sy;
 	float dx = -1 + x*sx;
-	const float dy = -1 + y*sy;
+	const float dy = 1 - y*sy - vadv;
 	const FT_GlyphSlot g = fontFace->glyph;
 	for (const char *p = text; *p != '\0'; p++) {
 		if (FT_Load_Char(fontFace, *p, FT_LOAD_RENDER))
@@ -134,7 +132,6 @@ void TextEditor::RenderText(const char *text, int x, int y, const float sx, floa
 		const float w  = g->bitmap.width*sx;
 		const float h  = g->bitmap.rows*sy;
 		const float adv = (g->advance.x >> 6)*sx;
-		const float vadv = cellHeight*sy;
 
 		GLfloat bgQuad[4][2] = {
 			{ dx,     dy-vadv*0.35f }, // fed up
