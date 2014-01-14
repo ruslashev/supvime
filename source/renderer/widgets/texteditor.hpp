@@ -7,8 +7,6 @@
 #include <string>
 #include <fstream>
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
 
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
@@ -61,7 +59,7 @@ private:
 public:
 	std::vector<Line> *lines;
 
-	TextEditor(const char *fontPath, SDL_Window *nwp);
+	TextEditor(const char *fontPath);
 	~TextEditor();
 
 	void Draw();

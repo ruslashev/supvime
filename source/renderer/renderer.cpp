@@ -42,7 +42,7 @@ void Renderer::Create(Editor *nep)
 	*/
 
 	widgets.push_back(std::unique_ptr<TextEditor>(
-				new TextEditor("symlink-to-font", window)));
+				new TextEditor("symlink-to-font")));
 	widgets[0]->lines = &ep->lines;
 }
 

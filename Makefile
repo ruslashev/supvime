@@ -9,16 +9,20 @@ MISCOBJS = obj/errors.o obj/glutils.o
 
 EXECNAME = supvime
 
-default: $(EXECNAME)
+default: objdir $(EXECNAME)
 	./$(EXECNAME)
 
 $(EXECNAME): $(OBJS)
 	$(CXX) -o $@ $^ -lGL -lGLEW -lSDL2 -lfreetype
 
-obj/%.o: ./%.cpp
+obj/%.o: source/%.cpp
 	$(CXX) -c -o $@ $< -Wall -Wextra -g -std=c++0x `freetype-config --cflags`
 
+objdir:
+	mkdir -p obj
+	mkdir -p obj/renderer
+	mkdir -p obj/renderer/widgets
+
 clean:
-	-rm -f obj/*.o obj/renderer/*.o obj/renderer/widgets/*.o
-	-rm -f $(EXECNAME)
+	-rm -f $(OBJS) $(EXECNAME)
 

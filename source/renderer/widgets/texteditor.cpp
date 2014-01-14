@@ -3,7 +3,7 @@
 #include "../../glutils.hpp"
 #include "../../errors.hpp"
 
-TextEditor::TextEditor(const char *fontPath, SDL_Window *nwp) : wp(nwp)
+TextEditor::TextEditor(const char *fontPath)
 {
 	GLenum err = glewInit();
 	if (err != GLEW_OK)

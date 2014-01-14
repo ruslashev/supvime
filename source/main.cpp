@@ -17,7 +17,7 @@ int main()
 	Editor ed;
 	Renderer rend;
 	try {
-		file.Open("file.cpp");
+		file.Open("source/file.cpp");
 		ed.Load(&file);
 		rend.Create(&ed);
 	} catch (std::exception &e) {
