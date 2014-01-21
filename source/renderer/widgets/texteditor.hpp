@@ -49,10 +49,11 @@ private:
 	GLint fg_coordAttribute, bg_vcoordAttribute;
 	GLuint fgVertShader, fgFragShader, bgVertShader, bgFragShader;
 	GLuint fgShaderProgram, bgShaderProgram;
-	unsigned int cellHeight;
+	unsigned int fontHeight;
 
 	void InitGL();
-	void RenderText(const char *text, int x, int y, const float sx, float sy);
+	void RenderFile(const float sx, float sy);
+	void RenderString(const char *text, int x, int y, const float sx, float sy);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextSize(unsigned int size);

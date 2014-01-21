@@ -82,15 +82,13 @@ void TextEditor::Draw()
 	setTextForeground(0, 0, 0);
 	setTextBackground(255, 255, 255);
 
-	for (size_t i = 0; i < lines->size(); i++) {
-		RenderText(lines->at(i).str.c_str(), 0, i*cellHeight*1.35f, sx, sy);
-	}
+	RenderFile(sx, sy);
 
 	for (size_t i = 0; i < lines->size(); i++)
 		lines->at(i).dirty = false;
 }
 
-void TextEditor::RenderText(const char *text, int x, int y, const float sx, float sy)
+void TextEditor::RenderFile(const float sx, float sy)
 {
 	glUseProgram(fgShaderProgram);
 	glActiveTexture(GL_TEXTURE0);
@@ -105,7 +103,96 @@ void TextEditor::RenderText(const char *text, int x, int y, const float sx, floa
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	const float vadv = cellHeight*sy;
+	const FT_GlyphSlot g = fontFace->glyph;
+	if (FT_Load_Char(fontFace, 'A', 0))
+		throwf("Failed to render primitive glyph!\n");
+
+	const float vadv = fontHeight*sy;
+	const float cellHeight = (int)(fontHeight*1.35f)*sy;
+	const float adv = (g->advance.x >> 6)*sx;
+
+	for (size_t i = 0; i < lines->size(); i++) {
+		float dx = -1;
+		const float dy = 1 - i*cellHeight - vadv;
+		std::string srcLine = lines->at(i).str;
+		const size_t lineLen = srcLine.length();
+
+		int cx = 0;
+		for (size_t c = 0; c < lineLen; c++, cx++) {
+			if (srcLine[c] == '\t') {
+				const int tabsize = 4;
+				cx += tabsize-1 - (c % tabsize);
+			}
+			printf("%d %d\n", c, cx);
+			if (FT_Load_Char(fontFace, srcLine[c], FT_LOAD_RENDER))
+				continue;
+
+			const float x2 = dx + g->bitmap_left*sx;
+			const float y2 = dy + g->bitmap_top*sy;
+			const float w  = g->bitmap.width*sx;
+			const float h  = g->bitmap.rows*sy;
+
+			GLfloat bgTriStrip[4][2] = {
+				{ dx,     dy-vadv*0.35f },
+				{ dx+adv, dy-vadv*0.35f },
+				{ dx,     dy+vadv },
+				{ dx+adv, dy+vadv },
+			};
+
+			glUseProgram(bgShaderProgram);
+			glEnableVertexAttribArray(bg_vcoordAttribute);
+			glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
+			glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(bgTriStrip), bgTriStrip, GL_DYNAMIC_DRAW);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			// -------------------- foreground -----
+			glUseProgram(fgShaderProgram);
+
+			glEnableVertexAttribArray(fg_coordAttribute);
+			glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
+			glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
+					g->bitmap.width, g->bitmap.rows, 0,
+					GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
+
+			GLfloat fgTriStrip[4][4] = {
+				{ x2,   y2  , 0, 0 },
+				{ x2+w, y2  , 1, 0 },
+				{ x2,   y2-h, 0, 1 },
+				{ x2+w, y2-h, 1, 1 },
+			};
+
+			glBufferData(GL_ARRAY_BUFFER, sizeof(fgTriStrip), fgTriStrip, GL_DYNAMIC_DRAW);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			dx = -1 + (cx+1)*adv;
+		}
+	}
+
+	glDisableVertexAttribArray(bg_vcoordAttribute);
+	glDisableVertexAttribArray(fg_coordAttribute);
+	glDeleteTextures(1, &fontTexture);
+}
+
+/*
+void TextEditor::RenderString(const char *text, int x, int y, const float sx, float sy)
+{
+	glUseProgram(fgShaderProgram);
+	glActiveTexture(GL_TEXTURE0);
+	GLuint fontTexture;
+	glGenTextures(1, &fontTexture);
+	glBindTexture(GL_TEXTURE_2D, fontTexture);
+	glUniform1i(fg_textureUnif, GL_TEXTURE0);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	const float vadv = fontHeight*sy;
 	float dx = -1 + x*sx;
 	const float dy = 1 - y*sy - vadv;
 	const FT_GlyphSlot g = fontFace->glyph;
@@ -119,7 +206,7 @@ void TextEditor::RenderText(const char *text, int x, int y, const float sx, floa
 		const float h  = g->bitmap.rows*sy;
 		const float adv = (g->advance.x >> 6)*sx;
 
-		GLfloat bgQuad[4][2] = {
+		GLfloat bgTriStrip[4][2] = {
 			{ dx,     dy-vadv*0.35f }, // fed up
 			{ dx+adv, dy-vadv*0.35f },
 			{ dx,     dy+vadv },
@@ -130,7 +217,7 @@ void TextEditor::RenderText(const char *text, int x, int y, const float sx, floa
 		glEnableVertexAttribArray(bg_vcoordAttribute);
 		glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
 		glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(bgQuad), bgQuad, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(bgTriStrip), bgTriStrip, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 		// -------------------- foreground -----
@@ -144,14 +231,14 @@ void TextEditor::RenderText(const char *text, int x, int y, const float sx, floa
 				g->bitmap.width, g->bitmap.rows, 0,
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
-		GLfloat fgQuad[4][4] = {
+		GLfloat fgTriStrip[4][4] = {
 			{ x2,   y2  , 0, 0 },
 			{ x2+w, y2  , 1, 0 },
 			{ x2,   y2-h, 0, 1 },
 			{ x2+w, y2-h, 1, 1 },
 		};
 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(fgQuad), fgQuad, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(fgTriStrip), fgTriStrip, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 		printf("%c", *p);
@@ -163,6 +250,7 @@ void TextEditor::RenderText(const char *text, int x, int y, const float sx, floa
 	glDisableVertexAttribArray(fg_coordAttribute);
 	glDeleteTextures(1, &fontTexture);
 }
+*/
 
 void TextEditor::setTextForeground(unsigned char r, unsigned char g, unsigned char b)
 {
@@ -180,7 +268,7 @@ void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned ch
 
 void TextEditor::setTextSize(unsigned int size)
 {
-	cellHeight = size;
+	fontHeight = size;
 	FT_Set_Pixel_Sizes(fontFace, size, size);
 }
 
