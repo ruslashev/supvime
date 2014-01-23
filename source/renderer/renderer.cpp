@@ -33,17 +33,9 @@ void Renderer::Create(Editor *nep)
 	if (SDL_GL_SetSwapInterval(1) < 0)
 		printf("Warning: Unable to set VSync: %s\n", SDL_GetError());
 
-	/*
-	// Create an SDL renderer
-	renderer = SDL_CreateRenderer(window, -1,
-			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	if (renderer == NULL)
-		throwf("Failed to create a renderer: %s\n", SDL_GetError());
-	*/
-
 	widgets.push_back(std::unique_ptr<TextEditor>(
 				new TextEditor("symlink-to-font")));
-	widgets[0]->lines = &ep->lines;
+	widgets[0]->ep = ep;
 }
 
 void Renderer::UpdateTitle()

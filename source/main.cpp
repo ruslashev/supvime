@@ -1,7 +1,5 @@
 /* TODO:
  * Consistent variable naming (use fg_* or fg*)
- * Get rid of comments
- * Maybe add own exception type
 */
 
 #include "file.hpp"

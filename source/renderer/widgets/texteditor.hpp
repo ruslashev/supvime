@@ -2,6 +2,7 @@
 #define TEXTEDITOR_HPP
 
 #include "../../editor.hpp"
+#include "../basedrawablewidget.hpp"
 
 #include <vector>
 #include <string>
@@ -11,35 +12,7 @@
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
-/*
-struct Cell
-{
-	std::string ch;
-	// string because `char`s aren't sufficient for other languages
-	// and `char*`s are cumbersome
-};
-
-struct CellFlag
-{
-	uint8_t flag;
-	// CCCC BIUV
-	// C - palette color index
-	// B - bold
-	// I - italics
-	// U - underline
-	// V - inverse
-	size_t start; // On what column does flag start
-	size_t len;   // how many lines spans
-};
-
-struct DrawableLine
-{
-	std::string str;
-	std::vector<CellFlag> flags;
-};
-*/
-
-class TextEditor// : public BaseDrawableWidget
+class TextEditor : public BaseDrawableWidget
 {
 private:
 	FT_Library ft;
@@ -60,8 +33,6 @@ private:
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextSize(unsigned int size);
 public:
-	std::vector<Line> *lines;
-
 	TextEditor(const char *fontPath);
 	~TextEditor();
 

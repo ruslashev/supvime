@@ -81,8 +81,8 @@ void TextEditor::Draw()
 
 	RenderFile();
 
-	for (size_t i = 0; i < lines->size(); i++)
-		lines->at(i).dirty = false;
+	for (size_t i = 0; i < ep->lines.size(); i++)
+		ep->lines.at(i).dirty = false;
 }
 
 void TextEditor::RenderFile()
@@ -107,10 +107,10 @@ void TextEditor::RenderFile()
 	const float cellHeight = (int)(fontHeight*1.35f)*sy;
 	const float adv = (fontFace->glyph->advance.x >> 6)*sx;
 
-	for (size_t l = 0; l < lines->size(); l++) {
+	for (size_t l = 0; l < ep->lines.size(); l++) {
 		float dx = -1;
 		const float dy = 1 - l*cellHeight - vadv;
-		std::string srcLine = lines->at(l).str;
+		std::string srcLine = ep->lines.at(l).str;
 		const size_t lineLen = srcLine.length();
 
 		int cx = 0;
