@@ -14,7 +14,6 @@
 
 class TextEditor : public BaseDrawableWidget
 {
-private:
 	FT_Library ft;
 	FT_Face fontFace;
 	GLuint fg_textVBO, bg_textVBO;

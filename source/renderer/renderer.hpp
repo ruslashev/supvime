@@ -12,7 +12,6 @@
 
 class Renderer
 {
-private:
 	Editor *ep;
 	SDL_Window *window;
 	SDL_GLContext ctxt;
