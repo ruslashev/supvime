@@ -118,11 +118,15 @@ void TextEditor::RenderFile()
 			if (srcLine[c] == '\t') {
 				const int tabsize = 4;
 				const int spacesToInsert = tabsize - (cx % tabsize);
-				for (int i = 0; i < spacesToInsert; i++) {
-					RenderChar('>', dx, dy, adv, vadv, cx);
+				setTextForeground(200, 200, 200);
+				RenderChar('|', dx, dy, adv, vadv, cx);
+				cx++;
+				for (int i = 1; i < spacesToInsert; i++) {
+					RenderChar('-', dx, dy, adv, vadv, cx);
 					cx++;
 				}
 				cx--;
+				setTextForeground(0, 0, 0);
 			}
 			RenderChar(srcLine[c], dx, dy, adv, vadv, cx);
 		}
@@ -133,7 +137,7 @@ void TextEditor::RenderFile()
 	glDeleteTextures(1, &fontTexture);
 }
 
-void TextEditor::RenderChar(const char ch, float &dx, const float dy, const float adv, const float vadv, const int cx)
+void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const float adv, const float vadv, const int cx)
 {
 	const FT_GlyphSlot g = fontFace->glyph;
 	if (FT_Load_Char(fontFace, ch, FT_LOAD_RENDER) != 0)

@@ -26,7 +26,7 @@ class TextEditor : public BaseDrawableWidget
 
 	void InitGL();
 	void RenderFile();
-	void RenderChar(const char ch, float &dx, const float dy, const float adv, const float vadv, const int cx);
+	void RenderChar(const uint32_t ch, float &dx, const float dy, const float adv, const float vadv, const int cx);
 	// void RenderString(const char *text, int x, int y);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
