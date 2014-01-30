@@ -1,5 +1,4 @@
 /* TODO:
- * Consistent variable naming (use fg_* or fg*)
 */
 
 #include "file.hpp"

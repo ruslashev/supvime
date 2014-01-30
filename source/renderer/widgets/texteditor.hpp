@@ -19,10 +19,11 @@ class TextEditor : public BaseDrawableWidget
 	GLuint fg_textVBO, bg_textVBO;
 	GLint fg_textureUnif, fg_FGcolorUnif, bg_BGcolorUnif;
 	GLint fg_coordAttribute, bg_vcoordAttribute;
-	GLuint fgVertShader, fgFragShader, bgVertShader, bgFragShader;
-	GLuint fgShaderProgram, bgShaderProgram;
+	GLuint fg_vertShader, fg_fragShader, bg_vertShader, bg_fragShader;
+	GLuint fg_shaderProgram, bg_shaderProgram;
 	unsigned int fontHeight;
 	const float sx, sy;
+	FT_GlyphSlot g;
 
 	void InitGL();
 	void RenderFile();
