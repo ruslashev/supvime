@@ -11,11 +11,19 @@
 
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
+#include FT_CACHE_H
 
 class TextEditor : public BaseDrawableWidget
 {
-	FT_Library ft;
-	FT_Face fontFace;
+	FT_Library ftLib;
+	FTC_Manager ftcManager;
+	FTC_SBitCache sbitCache;
+	FTC_CMapCache cmapCache;
+	FTC_ImageCache imgCache;
+	FTC_SBit sbit;
+	// FT_GlyphSlot g;
+	FT_Face *mainFace;
+
 	GLuint fg_textVBO, bg_textVBO;
 	GLint fg_textureUnif, fg_FGcolorUnif, bg_BGcolorUnif;
 	GLint fg_coordAttribute, bg_vcoordAttribute;
@@ -23,7 +31,6 @@ class TextEditor : public BaseDrawableWidget
 	GLuint fg_shaderProgram, bg_shaderProgram;
 	unsigned int fontHeight;
 	const float sx, sy;
-	FT_GlyphSlot g;
 
 	void InitGL();
 	void RenderFile();

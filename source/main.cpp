@@ -17,11 +17,8 @@ int main()
 		ed.Load(&file);
 		rend.Create(&ed);
 	} catch (std::exception &e) {
-		printf("\x1b[31m" "ERROR" "\x1b[0m" " %s\n", e.what());
+		fprintf(stderr, "\x1b[31m" "ERROR" "\x1b[0m" " %s\n", e.what());
 		return 1;
-	} catch (...) {
-		puts("Unknown error");
-		return 2;
 	}
 
 	while (1) {

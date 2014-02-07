@@ -3,24 +3,60 @@
 #include "../../glutils.hpp"
 #include "../../errors.hpp"
 
-TextEditor::TextEditor(const char *fontPath) : sx(2.f/800), sy(2.f/600)
+typedef struct MyFaceRec_
 {
+	const char* filePath;
+	int index;
+} MyFaceRec, *MyFace;
+
+static FT_Error FtcFaceRequesterCb(
+		FTC_FaceID faceID, FT_Library lib, FT_Pointer reqData, FT_Face *aface)
+{
+	MyFace face = (MyFace)faceID;
+
+	if (FT_New_Face(lib, face->filePath, face->index, aface) != 0)
+		throwf("Failed to load font face! Filename: \"%s\"\n", reqData);
+
+	// TODO
+	// if (!FT_IS_FIXED_WIDTH(*aface))
+	// 	printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
+	// 			(*face)->family_name, (*face)->style_name, (char*)reqData);
+
+	return 0;
+}
+
+TextEditor::TextEditor(const char *fontPath)
+	: sx(2.f/800), sy(2.f/600)
+{
+	// TODO move to InitGL
 	GLenum err = glewInit();
 	if (err != GLEW_OK)
 		throwf("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
 	if (!GLEW_VERSION_2_1)
 		throwf("Your graphics card's OpenGL version is less than 2.1\n");
 
-	if (FT_Init_FreeType(&ft))
+	if (FT_Init_FreeType(&ftLib))
 		throwf("Failed to initialize FreeType\n");
-	if (FT_New_Face(ft, fontPath, 0, &fontFace))
-		throwf("Failed to find font \"%s\"\n", fontPath);
-	if (!FT_IS_FIXED_WIDTH(fontFace))
-		printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
-				fontFace->family_name, fontFace->style_name, fontPath);
+
+	if (FTC_Manager_New(ftLib, 1, 1, 2*1024*1024, // TODO: try 0 (default)
+				&FtcFaceRequesterCb, NULL, &ftcManager))
+		throwf("Failed to create Font cache manager!\n");
+	if (FTC_CMapCache_New(ftcManager, &cmapCache))
+		throwf("Failed to create Font CMap cache!\n");
+	if (FTC_SBitCache_New(ftcManager, &sbitCache))
+		throwf("Failed to create Font SBit cache!\n");
+	if (FTC_ImageCache_New(ftcManager, &imgCache))
+		throwf("Failed to create Font Image cache!\n");
 
 	InitGL();
-	g = fontFace->glyph;
+
+	FTC_ImageType ftcImgType;
+   	ftcImgType->face_id = 0;
+   	ftcImgType->width = 14;
+   	ftcImgType->height = 14;
+   	ftcImgType->flags = FT_LOAD_RENDER;
+
+	FTC_Manager_LookupFace(ftcManager, 0, mainFace);
 }
 
 void TextEditor::InitGL()
@@ -76,7 +112,7 @@ void TextEditor::InitGL()
 
 void TextEditor::Draw()
 {
-	setTextSize(14);
+	// setTextSize(14);
 	setTextForeground(0, 0, 0);
 	setTextBackground(255, 255, 255);
 
@@ -101,7 +137,7 @@ void TextEditor::RenderFile()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	if (FT_Load_Char(fontFace, 'A', 0))
+	if (FT_Load_Char(fontFace, ' ', 0))
 		throwf("Failed to render primitive glyph!\n");
 
 	const float vadv = fontHeight*sy;
@@ -221,7 +257,7 @@ TextEditor::~TextEditor()
 	glDeleteProgram(bg_shaderProgram);
 	glDeleteShader(bg_vertShader);
 	glDeleteShader(bg_fragShader);
-	FT_Done_Face(fontFace);
-	FT_Done_FreeType(ft);
+	FTC_Manager_Done(ftcManager);
+	FT_Done_FreeType(ftLib);
 }
 

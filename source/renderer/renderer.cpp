@@ -19,7 +19,7 @@ void Renderer::Create(Editor *nep)
 	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE,   8);
 
 	// Create window
-	window = SDL_CreateWindow("Supvime loading..",
+	window = SDL_CreateWindow("Supvime is loading..",
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			800, 600,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
@@ -87,7 +87,6 @@ char Renderer::getch()
 
 Renderer::~Renderer()
 {
-	// SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
