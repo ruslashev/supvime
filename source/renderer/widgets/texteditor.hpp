@@ -13,16 +13,20 @@
 #include FT_FREETYPE_H
 #include FT_CACHE_H
 
+struct facePair_t {
+	const char* filePath;
+	int index;
+};
+
 class TextEditor : public BaseDrawableWidget
 {
 	FT_Library ftLib;
 	FTC_Manager ftcManager;
-	FTC_SBitCache sbitCache;
-	FTC_CMapCache cmapCache;
+	// FTC_SBitCache sbitCache;
+	// FTC_CMapCache cmapCache;
+	FTC_ImageType ftcImgType;
 	FTC_ImageCache imgCache;
-	FTC_SBit sbit;
-	// FT_GlyphSlot g;
-	FT_Face *mainFace;
+	// FTC_SBit sbit;
 
 	GLuint fg_textVBO, bg_textVBO;
 	GLint fg_textureUnif, fg_FGcolorUnif, bg_BGcolorUnif;
@@ -32,9 +36,10 @@ class TextEditor : public BaseDrawableWidget
 	unsigned int fontHeight;
 	const float sx, sy;
 
+	void LoadFontFace(const char *path);
 	void InitGL();
 	void RenderFile();
-	void RenderChar(const uint32_t ch, float &dx, const float dy, const float adv, const float vadv, const int cx);
+	void RenderChar(const uint32_t ch, float &dx, const float dy, const float vadv, const int cx);
 	// void RenderString(const char *text, int x, int y);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);

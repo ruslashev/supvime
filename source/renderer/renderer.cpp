@@ -6,8 +6,8 @@ void Renderer::Create(Editor *nep)
 	ep = nep;
 
 	// Initialize SDL
-	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
-		throwf("Failed to initialize SDL: %s\n", SDL_GetError());
+	int errCode = SDL_Init(SDL_INIT_EVERYTHING) < 0)
+	assertf(errCode >= 0, "Failed to initialize SDL: %s", SDL_GetError());
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -23,13 +23,11 @@ void Renderer::Create(Editor *nep)
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			800, 600,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-	if (window == NULL)
-		throwf("Failed to open a window: %s\n", SDL_GetError());
+	assertf(window != NULL, "Failed to open a window: %s", SDL_GetError());
 
 	// Initialize SDL_GL
 	ctxt = SDL_GL_CreateContext(window);
-	if (ctxt == NULL)
-		throwf("Failed to create OpenGL rendering context: %s\n", SDL_GetError());
+	assertf(ctxt != NULL, "Failed to create OpenGL rendering context: %s", SDL_GetError());
 	if (SDL_GL_SetSwapInterval(1) < 0)
 		printf("Warning: Unable to set VSync: %s\n", SDL_GetError());
 

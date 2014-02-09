@@ -11,7 +11,7 @@ GLuint CreateShader(GLenum type, const char *src)
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 	if (!success) {
 		PrintLog(shader);
-		throwf("Failed to compile %s shader\n",
+		throwf("Failed to compile %s shader",
 				type == GL_VERTEX_SHADER ? "vertex" : "fragment");
 	}
 
@@ -28,7 +28,7 @@ GLuint CreateShaderProgram(GLuint vs, GLuint fs)
 	glGetProgramiv(program, GL_LINK_STATUS, &success);
 	if (!success) {
 		PrintLog(program);
-		throwf("Failed to create shader program\n");
+		throwf("Failed to create shader program");
 	}
 	return program;
 }
@@ -55,16 +55,14 @@ void PrintLog(GLuint &shaderOrProg)
 GLint BindUniform(GLuint shaderProgramP, const char *name)
 {
 	GLint unif = glGetUniformLocation(shaderProgramP, name);
-	if (unif == -1)
-		throwf("Failed to bind uniform \"%s\"\n", name);
+	assertf(unif != -1, "Failed to bind uniform \"%s\"", name);
 	return unif;
 }
 
 GLint BindAttribute(GLuint shaderProgramP, const char *name)
 {
 	GLint attrib = glGetAttribLocation(shaderProgramP, name);
-	if (attrib == -1)
-		throwf("Failed to bind attribute \"%s\"\n", name);
+	assertf(attrib != -1, "Failed to bind attribute \"%s\"", name);
 	return attrib;
 }
 

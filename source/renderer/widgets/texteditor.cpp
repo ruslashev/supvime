@@ -3,19 +3,13 @@
 #include "../../glutils.hpp"
 #include "../../errors.hpp"
 
-typedef struct MyFaceRec_
-{
-	const char* filePath;
-	int index;
-} MyFaceRec, *MyFace;
-
 static FT_Error FtcFaceRequesterCb(
 		FTC_FaceID faceID, FT_Library lib, FT_Pointer reqData, FT_Face *aface)
 {
-	MyFace face = (MyFace)faceID;
+	facePair_t *face = (facePair_t*)faceID;
 
-	if (FT_New_Face(lib, face->filePath, face->index, aface) != 0)
-		throwf("Failed to load font face! Filename: \"%s\"\n", reqData);
+	int errCode = FT_New_Face(lib, face->filePath, face->index, aface);
+	assertf(errCode == 0, "Failed to load font face! Filename: \"%s\"", reqData);
 
 	// TODO
 	// if (!FT_IS_FIXED_WIDTH(*aface))
@@ -30,33 +24,33 @@ TextEditor::TextEditor(const char *fontPath)
 {
 	// TODO move to InitGL
 	GLenum err = glewInit();
-	if (err != GLEW_OK)
-		throwf("Failed to initialize GLEW: %s\n", glewGetErrorString(err));
-	if (!GLEW_VERSION_2_1)
-		throwf("Your graphics card's OpenGL version is less than 2.1\n");
+	assertf(err == GLEW_OK, "Failed to initialize GLEW: %s", glewGetErrorString(err));
+	assertf(GLEW_VERSION_2_1, "Your graphics card's OpenGL version is less than 2.1.");
 
-	if (FT_Init_FreeType(&ftLib))
-		throwf("Failed to initialize FreeType\n");
+	int errCode = FT_Init_FreeType(&ftLib);
+	assertf(errCode == 0, "Failed to initialize FreeType");
 
-	if (FTC_Manager_New(ftLib, 1, 1, 2*1024*1024, // TODO: try 0 (default)
-				&FtcFaceRequesterCb, NULL, &ftcManager))
-		throwf("Failed to create Font cache manager!\n");
-	if (FTC_CMapCache_New(ftcManager, &cmapCache))
-		throwf("Failed to create Font CMap cache!\n");
-	if (FTC_SBitCache_New(ftcManager, &sbitCache))
-		throwf("Failed to create Font SBit cache!\n");
-	if (FTC_ImageCache_New(ftcManager, &imgCache))
-		throwf("Failed to create Font Image cache!\n");
+	errCode = FTC_Manager_New(ftLib, 1, 1, 2*1024*1024, // TODO: try 0 (default)
+			&FtcFaceRequesterCb, NULL, &ftcManager);
+	assertf(errCode == 0, "Failed to create Font cache manager!");
+	// if (FTC_CMapCache_New(ftcManager, &cmapCache))
+	// 	throwf("Failed to create Font CMap cache!\n");
+	// if (FTC_SBitCache_New(ftcManager, &sbitCache))
+	// 	throwf("Failed to create Font SBit cache!\n");
+	// if (FTC_ImageCache_New(ftcManager, &imgCache))
+	// 	throwf("Failed to create Font Image cache!\n");
 
 	InitGL();
 
-	FTC_ImageType ftcImgType;
-   	ftcImgType->face_id = 0;
-   	ftcImgType->width = 14;
-   	ftcImgType->height = 14;
-   	ftcImgType->flags = FT_LOAD_RENDER;
+	// ftcImgType->face_id = 0;
+	// ftcImgType->width = 14;
+	// ftcImgType->height = 14;
+	// ftcImgType->flags = FT_LOAD_RENDER;
+}
 
-	FTC_Manager_LookupFace(ftcManager, 0, mainFace);
+void TextEditor::LoadFontFace(const char *path)
+{
+
 }
 
 void TextEditor::InitGL()
@@ -137,12 +131,8 @@ void TextEditor::RenderFile()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	if (FT_Load_Char(fontFace, ' ', 0))
-		throwf("Failed to render primitive glyph!\n");
-
 	const float vadv = fontHeight*sy;
 	const float cellHeight = (int)(fontHeight*1.35f)*sy;
-	const float adv = (fontFace->glyph->advance.x >> 6)*sx;
 
 	for (size_t l = 0; l < ep->lines.size(); l++) {
 		float dx = -1;
@@ -161,16 +151,16 @@ void TextEditor::RenderFile()
 				const int tabsize = 4;
 				const int spacesToInsert = tabsize - (cx % tabsize);
 				setTextForeground(200, 200, 200);
-				RenderChar('|', dx, dy, adv, vadv, cx);
+				RenderChar('|', dx, dy, vadv, cx);
 				cx++;
 				for (int i = 1; i < spacesToInsert; i++) {
-					RenderChar('-', dx, dy, adv, vadv, cx);
+					RenderChar('-', dx, dy, vadv, cx);
 					cx++;
 				}
 				cx--;
 				setTextForeground(0, 0, 0);
 			}
-			RenderChar(srcLine[c], dx, dy, adv, vadv, cx);
+			RenderChar(srcLine[c], dx, dy, vadv, cx);
 		}
 	}
 
@@ -179,10 +169,16 @@ void TextEditor::RenderFile()
 	glDeleteTextures(1, &fontTexture);
 }
 
-void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const float adv, const float vadv, const int cx)
+void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const float vadv, const int cx)
 {
-	if (FT_Load_Char(fontFace, ch, FT_LOAD_RENDER) != 0)
+	FT_Face tface;
+	if (FTC_Manager_LookupFace(ftcManager, 0, &tface))
+		throwf("Failed to lookup face from cache");
+	if (FT_Load_Char(tface, ch, FT_LOAD_RENDER) != 0)
 		return;
+	const float adv = (tface->glyph->advance.x >> 6)*sx;
+
+	const FT_GlyphSlot g = tface->glyph;
 
 	const float x2 = dx + g->bitmap_left*sx;
 	const float y2 = dy + g->bitmap_top*sy;
@@ -241,11 +237,11 @@ void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned ch
 	glUniform3fv(bg_BGcolorUnif, 1, color);
 }
 
-void TextEditor::setTextSize(unsigned int size)
-{
-	fontHeight = size;
-	FT_Set_Pixel_Sizes(fontFace, size, size);
-}
+// void TextEditor::setTextSize(unsigned int size)
+// {
+// 	fontHeight = size;
+// 	FT_Set_Pixel_Sizes(fontFace, size, size);
+// }
 
 TextEditor::~TextEditor()
 {

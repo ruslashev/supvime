@@ -5,5 +5,6 @@
 #include <cstdarg>
 
 void throwf(const char *format, ...);
+void assertf(bool condition, const char *format, ...);
 
 #endif
