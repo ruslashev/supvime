@@ -3,12 +3,16 @@
 #include "../../glutils.hpp"
 #include "../../errors.hpp"
 
+const std::string Faces[] = {
+	"symlink-to-font"
+};
+
 static FT_Error FtcFaceRequesterCb(
 		FTC_FaceID faceID, FT_Library lib, FT_Pointer reqData, FT_Face *aface)
 {
-	facePair_t *face = (facePair_t*)faceID;
+	const std::string faceName = Faces[(size_t)faceID];
 
-	int errCode = FT_New_Face(lib, face->filePath, face->index, aface);
+	int errCode = FT_New_Face(lib, faceName.c_str(), (FT_Long)faceID, aface);
 	assertf(errCode == 0, "Failed to load font face! Filename: \"%s\"", reqData);
 
 	// TODO
@@ -37,8 +41,9 @@ TextEditor::TextEditor(const char *fontPath)
 	// 	throwf("Failed to create Font CMap cache!\n");
 	// if (FTC_SBitCache_New(ftcManager, &sbitCache))
 	// 	throwf("Failed to create Font SBit cache!\n");
-	// if (FTC_ImageCache_New(ftcManager, &imgCache))
-	// 	throwf("Failed to create Font Image cache!\n");
+
+	errCode = FTC_ImageCache_New(ftcManager, &imgCache);
+	assertf(errCode == 0, "Failed to create Font Image cache!");
 
 	InitGL();
 
@@ -46,11 +51,6 @@ TextEditor::TextEditor(const char *fontPath)
 	// ftcImgType->width = 14;
 	// ftcImgType->height = 14;
 	// ftcImgType->flags = FT_LOAD_RENDER;
-}
-
-void TextEditor::LoadFontFace(const char *path)
-{
-
 }
 
 void TextEditor::InitGL()
@@ -131,6 +131,8 @@ void TextEditor::RenderFile()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
+	// TODO temporary
+	fontHeight = 14;
 	const float vadv = fontHeight*sy;
 	const float cellHeight = (int)(fontHeight*1.35f)*sy;
 
@@ -171,25 +173,52 @@ void TextEditor::RenderFile()
 
 void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const float vadv, const int cx)
 {
-	FT_Face tface;
-	if (FTC_Manager_LookupFace(ftcManager, 0, &tface))
-		throwf("Failed to lookup face from cache");
-	if (FT_Load_Char(tface, ch, FT_LOAD_RENDER) != 0)
-		return;
-	const float adv = (tface->glyph->advance.x >> 6)*sx;
+	FTC_ImageTypeRec glyphImageType;
+	glyphImageType.face_id = 0;
+	glyphImageType.width = 14;
+	glyphImageType.height = 14;
+	glyphImageType.flags = FT_LOAD_DEFAULT;
 
-	const FT_GlyphSlot g = tface->glyph;
+	FT_Glyph glyph;
+	int errCode;
+	errCode = FTC_ImageCache_Lookup(imgCache, &glyphImageType, ch, &glyph, NULL);
+	// TODO assert
 
-	const float x2 = dx + g->bitmap_left*sx;
-	const float y2 = dy + g->bitmap_top*sy;
-	const float w  = g->bitmap.width*sx;
-	const float h  = g->bitmap.rows*sy;
+	// FT_RENDER_MODE_LIGHT
+	// FT_RENDER_MODE_LCD
+	// FT_RENDER_MODE_LCD_V
+	errCode = FT_Glyph_To_Bitmap(&glyph, FT_RENDER_MODE_NORMAL, NULL, 0);
+	// TODO assert
 
+	assertf(glyph->format == FT_GLYPH_FORMAT_BITMAP, "Invalid glyph format: %d",
+			glyph->format);
+
+	FT_BitmapGlyph bitmapGl = (FT_BitmapGlyph)glyph;
+	FT_Bitmap *sourceBitmap = &bitmapGl->bitmap;
+
+	const int rows  = sourceBitmap->rows;
+	const int width = sourceBitmap->width;
+	const int left  = bitmapGl->left;
+	const int top   = bitmapGl->top;
+
+	const int xadv  = (glyph->advance.x + 0x8000) >> 16;
+	const int yadv  = (glyph->advance.y + 0x8000) >> 16;
+
+	const unsigned char *bitmapBuffer = sourceBitmap->buffer;
+	// ----------------------------------------
+	// const float adv = (glyph->advance.x >> 6)*sx;
+
+	const float x2 = dx + left*sx;
+	const float y2 = dy + top*sy;
+	const float w  = width*sx;
+	const float h  = rows*sy;
+
+	// -------------------- background -----
 	GLfloat bgTriStrip[4][2] = {
-		{ dx,     dy-vadv*0.35f },
-		{ dx+adv, dy-vadv*0.35f },
-		{ dx,     dy+vadv },
-		{ dx+adv, dy+vadv },
+		{ dx,      dy-yadv*0.35f },
+		{ dx+xadv, dy-yadv*0.35f },
+		{ dx,      dy+yadv },
+		{ dx+xadv, dy+yadv },
 	};
 
 	glUseProgram(bg_shaderProgram);
@@ -207,8 +236,8 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-			g->bitmap.width, g->bitmap.rows, 0,
-			GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
+			width, rows, 0,
+			GL_RED, GL_UNSIGNED_BYTE, bitmapBuffer);
 
 	GLfloat fgTriStrip[4][4] = {
 		{ x2,   y2  , 0, 0 },
@@ -220,7 +249,7 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glBufferData(GL_ARRAY_BUFFER, sizeof(fgTriStrip), fgTriStrip, GL_DYNAMIC_DRAW);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-	dx = -1 + (cx+1)*adv;
+	dx = -1 + (cx+1)*xadv;
 }
 
 void TextEditor::setTextForeground(unsigned char r, unsigned char g, unsigned char b)

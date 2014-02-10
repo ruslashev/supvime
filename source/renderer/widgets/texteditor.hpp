@@ -13,11 +13,6 @@
 #include FT_FREETYPE_H
 #include FT_CACHE_H
 
-struct facePair_t {
-	const char* filePath;
-	int index;
-};
-
 class TextEditor : public BaseDrawableWidget
 {
 	FT_Library ftLib;
@@ -36,7 +31,6 @@ class TextEditor : public BaseDrawableWidget
 	unsigned int fontHeight;
 	const float sx, sy;
 
-	void LoadFontFace(const char *path);
 	void InitGL();
 	void RenderFile();
 	void RenderChar(const uint32_t ch, float &dx, const float dy, const float vadv, const int cx);

@@ -6,7 +6,7 @@ void Renderer::Create(Editor *nep)
 	ep = nep;
 
 	// Initialize SDL
-	int errCode = SDL_Init(SDL_INIT_EVERYTHING) < 0)
+	int errCode = SDL_Init(SDL_INIT_EVERYTHING) < 0;
 	assertf(errCode >= 0, "Failed to initialize SDL: %s", SDL_GetError());
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);

@@ -1,4 +1,6 @@
 /* TODO:
+ * Get rid of all todos
+ * Create separate text renderer class
 */
 
 #include "file.hpp"
