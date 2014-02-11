@@ -15,10 +15,9 @@ static FT_Error FtcFaceRequesterCb(
 	int errCode = FT_New_Face(lib, faceName.c_str(), (FT_Long)faceID, aface);
 	assertf(errCode == 0, "Failed to load font face! Filename: \"%s\"", reqData);
 
-	// TODO
-	// if (!FT_IS_FIXED_WIDTH(*aface))
-	// 	printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
-	// 			(*face)->family_name, (*face)->style_name, (char*)reqData);
+	if (!((*aface)->face_flags & FT_FACE_FLAG_FIXED_WIDTH))
+		printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
+				(*aface)->family_name, (*aface)->style_name, faceName.c_str());
 
 	return 0;
 }
@@ -26,19 +25,14 @@ static FT_Error FtcFaceRequesterCb(
 TextEditor::TextEditor(const char *fontPath)
 	: sx(2.f/800), sy(2.f/600)
 {
-	// TODO move to InitGL
-	GLenum err = glewInit();
-	assertf(err == GLEW_OK, "Failed to initialize GLEW: %s", glewGetErrorString(err));
-	assertf(GLEW_VERSION_2_1, "Your graphics card's OpenGL version is less than 2.1.");
-
 	int errCode = FT_Init_FreeType(&ftLib);
 	assertf(errCode == 0, "Failed to initialize FreeType");
 
 	errCode = FTC_Manager_New(ftLib, 1, 1, 2*1024*1024, // TODO: try 0 (default)
 			&FtcFaceRequesterCb, NULL, &ftcManager);
 	assertf(errCode == 0, "Failed to create Font cache manager!");
-	// if (FTC_CMapCache_New(ftcManager, &cmapCache))
-	// 	throwf("Failed to create Font CMap cache!\n");
+	errCode = FTC_CMapCache_New(ftcManager, &cmapCache);
+	assertf(errCode == 0, "Failed to create Font CMap cache!");
 	// if (FTC_SBitCache_New(ftcManager, &sbitCache))
 	// 	throwf("Failed to create Font SBit cache!\n");
 
@@ -46,15 +40,14 @@ TextEditor::TextEditor(const char *fontPath)
 	assertf(errCode == 0, "Failed to create Font Image cache!");
 
 	InitGL();
-
-	// ftcImgType->face_id = 0;
-	// ftcImgType->width = 14;
-	// ftcImgType->height = 14;
-	// ftcImgType->flags = FT_LOAD_RENDER;
 }
 
 void TextEditor::InitGL()
 {
+	GLenum err = glewInit();
+	assertf(err == GLEW_OK, "Failed to initialize GLEW: %s", glewGetErrorString(err));
+	assertf(GLEW_VERSION_2_1, "Your graphics card's OpenGL version is less than 2.1.");
+
 	glGenBuffers(1, &fg_textVBO);
 	glGenBuffers(1, &bg_textVBO);
 
@@ -161,8 +154,8 @@ void TextEditor::RenderFile()
 				}
 				cx--;
 				setTextForeground(0, 0, 0);
-			}
-			RenderChar(srcLine[c], dx, dy, vadv, cx);
+			} else
+				RenderChar(srcLine[c], dx, dy, vadv, cx);
 		}
 	}
 
@@ -179,19 +172,20 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glyphImageType.height = 14;
 	glyphImageType.flags = FT_LOAD_DEFAULT;
 
+	FT_UInt glyphIndex = FTC_CMapCache_Lookup(cmapCache, /* TODO */ 0, 0, ch);
+	assertf(glyphIndex != 0, "Failed to lookup glyph index for char '%c'", ch);
 	FT_Glyph glyph;
-	int errCode;
-	errCode = FTC_ImageCache_Lookup(imgCache, &glyphImageType, ch, &glyph, NULL);
-	// TODO assert
+	int errCode = FTC_ImageCache_Lookup(imgCache, &glyphImageType, ch, &glyph, NULL);
+	assertf(errCode == 0, "Failed to lookup glyph image for char '%c'", ch);
 
 	// FT_RENDER_MODE_LIGHT
 	// FT_RENDER_MODE_LCD
 	// FT_RENDER_MODE_LCD_V
 	errCode = FT_Glyph_To_Bitmap(&glyph, FT_RENDER_MODE_NORMAL, NULL, 0);
-	// TODO assert
+	assertf(errCode == 0, "Failed to render glyph '%c'", ch);
 
-	assertf(glyph->format == FT_GLYPH_FORMAT_BITMAP, "Invalid glyph format: %d",
-			glyph->format);
+	assertf(glyph->format == FT_GLYPH_FORMAT_BITMAP,
+			"Invalid glyph format: %d", glyph->format);
 
 	FT_BitmapGlyph bitmapGl = (FT_BitmapGlyph)glyph;
 	FT_Bitmap *sourceBitmap = &bitmapGl->bitmap;
@@ -201,12 +195,11 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	const int left  = bitmapGl->left;
 	const int top   = bitmapGl->top;
 
-	const int xadv  = (glyph->advance.x + 0x8000) >> 16;
-	const int yadv  = (glyph->advance.y + 0x8000) >> 16;
+	const float xadv  = ((glyph->advance.x + 0x8000) >> 16 )*sx;
+	const float yadv  = ((glyph->advance.y + 0x8000) >> 16 )*sx;
 
 	const unsigned char *bitmapBuffer = sourceBitmap->buffer;
 	// ----------------------------------------
-	// const float adv = (glyph->advance.x >> 6)*sx;
 
 	const float x2 = dx + left*sx;
 	const float y2 = dy + top*sy;

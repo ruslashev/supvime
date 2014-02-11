@@ -17,10 +17,9 @@ class TextEditor : public BaseDrawableWidget
 {
 	FT_Library ftLib;
 	FTC_Manager ftcManager;
-	// FTC_SBitCache sbitCache;
-	// FTC_CMapCache cmapCache;
-	FTC_ImageType ftcImgType;
 	FTC_ImageCache imgCache;
+	FTC_CMapCache cmapCache;
+	// FTC_SBitCache sbitCache;
 	// FTC_SBit sbit;
 
 	GLuint fg_textVBO, bg_textVBO;
