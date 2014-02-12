@@ -4,6 +4,7 @@
 #include "../../editor.hpp"
 #include "../basedrawablewidget.hpp"
 
+#include <map>
 #include <vector>
 #include <string>
 #include <fstream>
@@ -11,29 +12,45 @@
 
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
-#include FT_CACHE_H
+
+struct glyph_t {
+	unsigned char *bitmapBuffer;
+	int left, top, width, rows;
+	long xadv;
+};
+struct glyphKey_t {
+	uint32_t ch;
+	unsigned int size;
+	bool operator<(const glyphKey_t &other) const {
+		return ch < other.ch;
+	}
+};
+
+class TextCacher
+{
+	std::map<glyphKey_t, glyph_t> normalGlyphs;
+public:
+	FT_Face face;
+	glyph_t Lookup(uint32_t ch, unsigned int size);
+};
 
 class TextEditor : public BaseDrawableWidget
 {
 	FT_Library ftLib;
-	FTC_Manager ftcManager;
-	FTC_ImageCache imgCache;
-	FTC_CMapCache cmapCache;
-	// FTC_SBitCache sbitCache;
-	// FTC_SBit sbit;
+	FT_Face mainFace;
+	unsigned int fontHeight;
+	TextCacher cacher;
 
 	GLuint fg_textVBO, bg_textVBO;
 	GLint fg_textureUnif, fg_FGcolorUnif, bg_BGcolorUnif;
 	GLint fg_coordAttribute, bg_vcoordAttribute;
 	GLuint fg_vertShader, fg_fragShader, bg_vertShader, bg_fragShader;
 	GLuint fg_shaderProgram, bg_shaderProgram;
-	unsigned int fontHeight;
 	const float sx, sy;
 
 	void InitGL();
 	void RenderFile();
 	void RenderChar(const uint32_t ch, float &dx, const float dy, const float vadv, const int cx);
-	// void RenderString(const char *text, int x, int y);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextSize(unsigned int size);
