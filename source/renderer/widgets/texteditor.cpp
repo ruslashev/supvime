@@ -17,6 +17,7 @@ TextEditor::TextEditor(const char *fontPath)
 				mainFace->family_name, mainFace->style_name, fontPath);
 
 	cacher.face = mainFace;
+	cacher.ftLib = ftLib;
 
 	InitGL();
 }
@@ -144,38 +145,47 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 {
 	const glyphKey_t key = { ch, size };
 	const FT_GlyphSlot g = face->glyph;
-	if (normalGlyphs.find(key) == normalGlyphs.end()) {
-		printf("'%c' doesn't\n", ch);
+
+	if (normalGlyphs.find(key) != normalGlyphs.end()) {
+		// exists
+		return normalGlyphs.at(key);
+	} else {
 		// doesn't exist
 		const int errCode = FT_Load_Char(face, ch, FT_LOAD_RENDER);
 		assertf(errCode == 0, "Failed to render char '%c'", ch);
 
-		const glyph_t value {
-			g->bitmap.buffer,
+		FT_Bitmap bmap;
+		FT_Bitmap_New(&bmap);
+		FT_Bitmap_Copy(ftLib, &g->bitmap, &bmap);
+		const glyph_t value = {
+			bmap,
+			g->advance.x >> 6,
 			g->bitmap_left,
 			g->bitmap_top,
 			g->bitmap.width,
-			g->bitmap.rows,
-			g->advance.x >> 6
+			g->bitmap.rows
 		};
+
 		normalGlyphs[key] = value;
 
 		return value;
-	} else {
-		printf("'%c' does\n", ch);
-		// exists
-		return normalGlyphs[key];
 	}
+}
+
+TextCacher::~TextCacher()
+{
+	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it)
+		FT_Bitmap_Done(ftLib, &it->second.bitmap);
 }
 
 void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const float yadv, const int cx)
 {
 	const glyph_t glyph = cacher.Lookup(ch, 14);
-	const float xadv = glyph.xadv*sx;
+	const float xadv = glyph.xAdvance*sx;
 	const float x2 = dx + glyph.left*sx;
 	const float y2 = dy + glyph.top*sy;
 	const float w = glyph.width*sx;
-	const float h = glyph.rows*sy;
+	const float h = glyph.height*sy;
 
 	// -------------------- background -----
 	GLfloat bgTriStrip[4][2] = {
@@ -200,8 +210,8 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-			glyph.width, glyph.rows, 0,
-			GL_RED, GL_UNSIGNED_BYTE, glyph.bitmapBuffer);
+			glyph.width, glyph.height, 0,
+			GL_RED, GL_UNSIGNED_BYTE, glyph.bitmap.buffer);
 
 	GLfloat fgTriStrip[4][4] = {
 		{ x2,   y2  , 0, 0 },

@@ -4,19 +4,21 @@
 #include "../../editor.hpp"
 #include "../basedrawablewidget.hpp"
 
+#include <memory>
 #include <map>
 #include <vector>
 #include <string>
 #include <fstream>
-#include <GL/glew.h>
 
+#include <GL/glew.h>
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
+#include FT_BITMAP_H
 
 struct glyph_t {
-	unsigned char *bitmapBuffer;
-	int left, top, width, rows;
-	long xadv;
+	FT_Bitmap bitmap;
+	int xAdvance;
+	int left, top, width, height;
 };
 struct glyphKey_t {
 	uint32_t ch;
@@ -31,7 +33,9 @@ class TextCacher
 	std::map<glyphKey_t, glyph_t> normalGlyphs;
 public:
 	FT_Face face;
+	FT_Library ftLib;
 	glyph_t Lookup(uint32_t ch, unsigned int size);
+	~TextCacher();
 };
 
 class TextEditor : public BaseDrawableWidget

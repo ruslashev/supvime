@@ -1,6 +1,6 @@
 /* TODO:
  * Get rid of all todos
- * Create separate text renderer class
+ * Precache ASCII chars in cacher
 */
 
 #include "file.hpp"
