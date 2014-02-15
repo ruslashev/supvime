@@ -75,6 +75,8 @@ void TextEditor::InitGL()
 	bg_shaderProgram = CreateShaderProgram(bg_vertShader, bg_fragShader);
 	bg_vcoordAttribute = BindAttribute(bg_shaderProgram, "vcoord");
 	bg_BGcolorUnif = BindUniform(bg_shaderProgram, "bg");
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void TextEditor::Draw()
@@ -91,19 +93,6 @@ void TextEditor::Draw()
 
 void TextEditor::RenderFile()
 {
-	glUseProgram(fg_shaderProgram);
-	glActiveTexture(GL_TEXTURE0);
-	GLuint fontTexture;
-	glGenTextures(1, &fontTexture);
-	glBindTexture(GL_TEXTURE_2D, fontTexture);
-	glUniform1i(fg_textureUnif, GL_TEXTURE0);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
 	const float vadv = fontHeight*sy;
 	const float cellHeight = (int)(fontHeight*1.35f)*sy; // TODO
 
@@ -138,7 +127,6 @@ void TextEditor::RenderFile()
 
 	glDisableVertexAttribArray(bg_vcoordAttribute);
 	glDisableVertexAttribArray(fg_coordAttribute);
-	glDeleteTextures(1, &fontTexture);
 }
 
 glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
@@ -214,7 +202,6 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
 	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
 
 	GLfloat fgTriStrip[4][4] = {
@@ -256,10 +243,12 @@ TextEditor::~TextEditor()
 	glDeleteProgram(fg_shaderProgram);
 	glDeleteShader(fg_vertShader);
 	glDeleteShader(fg_fragShader);
+
 	glDeleteBuffers(1, &bg_textVBO);
 	glDeleteProgram(bg_shaderProgram);
 	glDeleteShader(bg_vertShader);
 	glDeleteShader(bg_fragShader);
+
 	FT_Done_Face(mainFace);
 	FT_Done_FreeType(ftLib);
 }
