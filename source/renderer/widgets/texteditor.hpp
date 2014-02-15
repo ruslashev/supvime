@@ -13,10 +13,9 @@
 #include <GL/glew.h>
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
-#include FT_BITMAP_H
 
 struct glyph_t {
-	FT_Bitmap bitmap;
+	GLuint textureID;
 	int xAdvance;
 	int left, top, width, height;
 };

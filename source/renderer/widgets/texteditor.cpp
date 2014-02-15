@@ -147,18 +147,23 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 	const FT_GlyphSlot g = face->glyph;
 
 	if (normalGlyphs.find(key) != normalGlyphs.end()) {
-		// exists
 		return normalGlyphs.at(key);
 	} else {
 		// doesn't exist
+
 		const int errCode = FT_Load_Char(face, ch, FT_LOAD_RENDER);
 		assertf(errCode == 0, "Failed to render char '%c'", ch);
 
-		FT_Bitmap bmap;
-		FT_Bitmap_New(&bmap);
-		FT_Bitmap_Copy(ftLib, &g->bitmap, &bmap);
+		GLuint textureID;
+		glGenTextures(1, &textureID);
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
+				g->bitmap.width, g->bitmap.rows, 0,
+				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
+
 		const glyph_t value = {
-			bmap,
+			textureID,
 			g->advance.x >> 6,
 			g->bitmap_left,
 			g->bitmap_top,
@@ -175,7 +180,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 TextCacher::~TextCacher()
 {
 	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it)
-		FT_Bitmap_Done(ftLib, &it->second.bitmap);
+		glDeleteTextures(1, &it->second.textureID);
 }
 
 void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const float yadv, const int cx)
@@ -209,9 +214,8 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
 	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED,
-			glyph.width, glyph.height, 0,
-			GL_RED, GL_UNSIGNED_BYTE, glyph.bitmap.buffer);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
 
 	GLfloat fgTriStrip[4][4] = {
 		{ x2,   y2  , 0, 0 },
