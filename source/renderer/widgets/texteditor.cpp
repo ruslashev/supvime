@@ -4,7 +4,7 @@
 #include "../../errors.hpp"
 
 TextEditor::TextEditor(const char *fontPath)
-	: sx(2.f/800), sy(2.f/600)
+	: sx(2.f/800), sy(2.f/600), lineSpacing(1.35f)
 {
 	int errCode = FT_Init_FreeType(&ftLib);
 	assertf(errCode == 0, "Failed to initialize FreeType");
@@ -28,55 +28,47 @@ void TextEditor::InitGL()
 	assertf(err == GLEW_OK, "Failed to initialize GLEW: %s", glewGetErrorString(err));
 	assertf(GLEW_VERSION_2_1, "Your graphics card's OpenGL version is less than 2.1.");
 
-	glGenBuffers(1, &fg_textVBO);
-	glGenBuffers(1, &bg_textVBO);
+	glGenBuffers(1, &textVBO_vertCoords);
+	glGenBuffers(1, &textVBO_textureCoords);
 
-	const char *ForegroundVertShaderSrc = GLSL(
-		attribute vec4 coord;
-		varying vec2 texCoord;
+	const char *VertShaderSrc = GLSL(
+		attribute vec2 vertCoords;
+		attribute vec2 textureCoords;
+
+		varying vec2 textureCoordsP;
+
 		void main() {
-			gl_Position = vec4(coord.xy, 0, 1);
-			texCoord = coord.zw;
+			gl_Position = vec4(vertCoords, 0, 1);
+			textureCoordsP = textureCoords;
 		}
 	);
 
-	const char *ForegroundFragShaderSrc = GLSL(
-		varying vec2 texCoord;
+	const char *FragShaderSrc = GLSL(
+		varying vec2 textureCoordsP;
 		uniform sampler2D tex0;
 		uniform vec3 fg;
-		void main() {
-			gl_FragColor = vec4(fg, texture2D(tex0, texCoord).r);
-		}
-	);
-
-	const char *BackgroundVertShaderSrc = GLSL(
-		attribute vec2 vcoord;
-		void main() {
-			gl_Position = vec4(vcoord, 0, 1);
-		}
-	);
-
-	const char *BacgroundFragShaderSrc = GLSL(
 		uniform vec3 bg;
+
 		void main() {
-			gl_FragColor = vec4(bg, 1);
+			vec3 color = mix(bg, fg, texture2D(tex0, textureCoordsP).r);
+			gl_FragColor = vec4(color, 1);
 		}
 	);
 
-	fg_vertShader = CreateShader(GL_VERTEX_SHADER, ForegroundVertShaderSrc);
-	fg_fragShader = CreateShader(GL_FRAGMENT_SHADER, ForegroundFragShaderSrc);
-	fg_shaderProgram = CreateShaderProgram(fg_vertShader, fg_fragShader);
-	fg_coordAttribute = BindAttribute(fg_shaderProgram, "coord");
-	fg_textureUnif = BindUniform(fg_shaderProgram, "tex0");
-	fg_FGcolorUnif = BindUniform(fg_shaderProgram, "fg");
+	text_vertShader = CreateShader(GL_VERTEX_SHADER, VertShaderSrc);
+	text_fragShader = CreateShader(GL_FRAGMENT_SHADER, FragShaderSrc);
+	text_shaderProgram = CreateShaderProgram(text_vertShader, text_fragShader);
 
-	bg_vertShader = CreateShader(GL_VERTEX_SHADER, BackgroundVertShaderSrc);
-	bg_fragShader = CreateShader(GL_FRAGMENT_SHADER, BacgroundFragShaderSrc);
-	bg_shaderProgram = CreateShaderProgram(bg_vertShader, bg_fragShader);
-	bg_vcoordAttribute = BindAttribute(bg_shaderProgram, "vcoord");
-	bg_BGcolorUnif = BindUniform(bg_shaderProgram, "bg");
+	text_vertCoordsAttribute = BindAttribute(text_shaderProgram, "vertCoords");
+	text_textureCoordsAttribute = BindAttribute(text_shaderProgram, "textureCoords");
+
+	text_textureUnif = BindUniform(text_shaderProgram, "tex0");
+	text_FGcolorUnif = BindUniform(text_shaderProgram, "fg");
+	text_BGcolorUnif = BindUniform(text_shaderProgram, "bg");
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	glUseProgram(text_shaderProgram);
 }
 
 void TextEditor::Draw()
@@ -93,12 +85,11 @@ void TextEditor::Draw()
 
 void TextEditor::RenderFile()
 {
-	const float vadv = fontHeight*sy;
-	const float cellHeight = (int)(fontHeight*1.35f)*sy; // TODO
+	const float cellHeight = (int)(fontHeight*lineSpacing)*sy;
 
 	for (size_t l = 0; l < ep->lines.size(); l++) {
 		float dx = -1;
-		const float dy = 1 - l*cellHeight - vadv;
+		const float dy = 1 - l*cellHeight;
 		const std::string srcLine = ep->lines.at(l).str;
 
 		int cx = 0;
@@ -112,21 +103,93 @@ void TextEditor::RenderFile()
 				const int tabsize = 4;
 				const int spacesToInsert = tabsize - (cx % tabsize);
 				setTextForeground(200, 200, 200);
-				RenderChar('|', dx, dy, vadv, cx);
+				RenderChar('|', dx, dy, cx);
 				cx++;
 				for (int i = 1; i < spacesToInsert; i++) {
-					RenderChar('-', dx, dy, vadv, cx);
+					RenderChar('-', dx, dy, cx);
 					cx++;
 				}
 				cx--;
 				setTextForeground(0, 0, 0);
 			} else
-				RenderChar(srcLine[c], dx, dy, vadv, cx);
+				RenderChar(srcLine[c], dx, dy, cx);
 		}
 	}
+}
 
-	glDisableVertexAttribArray(bg_vcoordAttribute);
-	glDisableVertexAttribArray(fg_coordAttribute);
+void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const int cx)
+{
+	const glyph_t glyph = cacher.Lookup(ch, 14);
+	const float xadv = glyph.xAdvance*sx;
+
+	// Vertex coords
+	GLfloat triStripVCoords[4][2] = {
+		{ dx,      dy },
+		{ dx+xadv, dy },
+		{ dx,      dy+fontHeight*lineSpacing*sy },
+		{ dx+xadv, dy+fontHeight*lineSpacing*sy }
+	};
+
+	glBindBuffer(GL_ARRAY_BUFFER, textVBO_vertCoords);
+	glEnableVertexAttribArray(text_vertCoordsAttribute);
+	glVertexAttribPointer(text_vertCoordsAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(triStripVCoords), triStripVCoords,
+			GL_DYNAMIC_DRAW); // TODO dynamic?
+
+	// Texture coords
+	const float x2 = dx + glyph.left;
+	const float y2 = dy + glyph.top;
+	const float w = glyph.width;
+	const float h = glyph.height;
+
+	GLfloat textureCoords[4][2] = {
+		{ 0, 1 },
+		{ 1, 1 },
+		{ 0, 0 },
+		{ 1, 0 }
+	};
+
+	glBindBuffer(GL_ARRAY_BUFFER, textVBO_textureCoords);
+	glEnableVertexAttribArray(text_textureCoordsAttribute);
+	glVertexAttribPointer(text_textureCoordsAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(textureCoords), textureCoords,
+			GL_DYNAMIC_DRAW); // TODO again
+
+	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	dx = -1 + (cx+1)*xadv;
+}
+
+void TextEditor::setTextForeground(unsigned char r, unsigned char g, unsigned char b)
+{
+	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
+	glUniform3fv(text_FGcolorUnif, 1, color);
+}
+
+void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned char b)
+{
+	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
+	glUniform3fv(text_BGcolorUnif, 1, color);
+}
+
+void TextEditor::setTextSize(unsigned int size)
+{
+	fontHeight = size;
+	FT_Set_Pixel_Sizes(mainFace, size, size);
+}
+
+TextEditor::~TextEditor()
+{
+	glDeleteBuffers(1, &textVBO_vertCoords);
+	glDeleteBuffers(1, &textVBO_textureCoords);
+	glDeleteProgram(text_shaderProgram);
+	glDeleteShader(text_vertShader);
+	glDeleteShader(text_fragShader);
+
+	FT_Done_Face(mainFace);
+	FT_Done_FreeType(ftLib);
 }
 
 glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
@@ -138,7 +201,6 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 		return normalGlyphs.at(key);
 	} else {
 		// doesn't exist
-
 		const int errCode = FT_Load_Char(face, ch, FT_LOAD_RENDER);
 		assertf(errCode == 0, "Failed to render char '%c'", ch);
 
@@ -169,87 +231,5 @@ TextCacher::~TextCacher()
 {
 	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it)
 		glDeleteTextures(1, &it->second.textureID);
-}
-
-void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const float yadv, const int cx)
-{
-	const glyph_t glyph = cacher.Lookup(ch, 14);
-	const float xadv = glyph.xAdvance*sx;
-	const float x2 = dx + glyph.left*sx;
-	const float y2 = dy + glyph.top*sy;
-	const float w = glyph.width*sx;
-	const float h = glyph.height*sy;
-
-	// -------------------- background -----
-	GLfloat bgTriStrip[4][2] = {
-		{ dx,      dy-yadv*0.35f },
-		{ dx+xadv, dy-yadv*0.35f },
-		{ dx,      dy+yadv },
-		{ dx+xadv, dy+yadv },
-	};
-
-	glUseProgram(bg_shaderProgram);
-	glEnableVertexAttribArray(bg_vcoordAttribute);
-	glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
-	glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(bgTriStrip), bgTriStrip, GL_DYNAMIC_DRAW);
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	// -------------------- foreground -----
-	glUseProgram(fg_shaderProgram);
-
-	glEnableVertexAttribArray(fg_coordAttribute);
-	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
-	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
-
-	GLfloat fgTriStrip[4][4] = {
-		{ x2,   y2  , 0, 0 },
-		{ x2+w, y2  , 1, 0 },
-		{ x2,   y2-h, 0, 1 },
-		{ x2+w, y2-h, 1, 1 },
-	};
-
-	glBufferData(GL_ARRAY_BUFFER, sizeof(fgTriStrip), fgTriStrip, GL_DYNAMIC_DRAW);
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	dx = -1 + (cx+1)*xadv;
-}
-
-void TextEditor::setTextForeground(unsigned char r, unsigned char g, unsigned char b)
-{
-	glUseProgram(fg_shaderProgram);
-	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
-	glUniform3fv(fg_FGcolorUnif, 1, color);
-}
-
-void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned char b)
-{
-	glUseProgram(bg_shaderProgram);
-	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
-	glUniform3fv(bg_BGcolorUnif, 1, color);
-}
-
-void TextEditor::setTextSize(unsigned int size)
-{
-	fontHeight = size;
-	FT_Set_Pixel_Sizes(mainFace, size, size);
-}
-
-TextEditor::~TextEditor()
-{
-	glDeleteBuffers(1, &fg_textVBO);
-	glDeleteProgram(fg_shaderProgram);
-	glDeleteShader(fg_vertShader);
-	glDeleteShader(fg_fragShader);
-
-	glDeleteBuffers(1, &bg_textVBO);
-	glDeleteProgram(bg_shaderProgram);
-	glDeleteShader(bg_vertShader);
-	glDeleteShader(bg_fragShader);
-
-	FT_Done_Face(mainFace);
-	FT_Done_FreeType(ftLib);
 }
 

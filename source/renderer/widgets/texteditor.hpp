@@ -44,16 +44,17 @@ class TextEditor : public BaseDrawableWidget
 	unsigned int fontHeight;
 	TextCacher cacher;
 
-	GLuint fg_textVBO, bg_textVBO;
-	GLint fg_textureUnif, fg_FGcolorUnif, bg_BGcolorUnif;
-	GLint fg_coordAttribute, bg_vcoordAttribute;
-	GLuint fg_vertShader, fg_fragShader, bg_vertShader, bg_fragShader;
-	GLuint fg_shaderProgram, bg_shaderProgram;
+	GLuint textVBO_vertCoords, textVBO_textureCoords;
+	GLint text_textureUnif, text_FGcolorUnif, text_BGcolorUnif;
+	GLint text_vertCoordsAttribute, text_textureCoordsAttribute;
+	GLuint text_vertShader, text_fragShader;
+	GLuint text_shaderProgram;
 	const float sx, sy;
+	const float lineSpacing;
 
 	void InitGL();
 	void RenderFile();
-	void RenderChar(const uint32_t ch, float &dx, const float dy, const float vadv, const int cx);
+	void RenderChar(const uint32_t ch, float &dx, const float dy, const int cx);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextSize(unsigned int size);
