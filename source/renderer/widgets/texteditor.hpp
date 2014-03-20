@@ -16,7 +16,7 @@
 
 struct glyph_t {
 	GLuint textureID;
-	int xAdvance;
+	long xAdvance;
 	int left, top, width, height;
 };
 struct glyphKey_t {
@@ -44,11 +44,12 @@ class TextEditor : public BaseDrawableWidget
 	unsigned int fontHeight;
 	TextCacher cacher;
 
-	GLuint textVBO_vertCoords, textVBO_textureCoords;
-	GLint text_textureUnif, text_FGcolorUnif, text_BGcolorUnif;
-	GLint text_vertCoordsAttribute, text_textureCoordsAttribute;
-	GLuint text_vertShader, text_fragShader;
-	GLuint text_shaderProgram;
+	GLuint fg_textVBO, bg_textVBO;
+	GLint fg_textureUnif, fg_FGcolorUnif, bg_BGcolorUnif;
+	GLint fg_coordAttribute, bg_vcoordAttribute;
+	GLuint fg_vertShader, fg_fragShader, bg_vertShader, bg_fragShader;
+	GLuint fg_shaderProgram, bg_shaderProgram;
+
 	const float sx, sy;
 	const float lineSpacing;
 

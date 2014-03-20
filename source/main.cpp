@@ -2,6 +2,8 @@
  * Use one VBO for text instead of two
  * Precache ASCII chars in cacher
  * Cache different font sizes
+ * Rework glutils (don't dynamically allocate array, passing by references etc)
+ * Remove trailing _t in structs
 */
 
 #include "file.hpp"
