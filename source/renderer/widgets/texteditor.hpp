@@ -27,12 +27,15 @@ struct glyphKey_t {
 	}
 };
 
+class TextEditor;
+
 class TextCacher
 {
 	std::map<glyphKey_t, glyph_t> normalGlyphs;
 public:
 	FT_Face face;
 	FT_Library ftLib;
+	void Precache(TextEditor *ted, unsigned int size);
 	glyph_t Lookup(uint32_t ch, unsigned int size);
 	~TextCacher();
 };
@@ -58,12 +61,12 @@ class TextEditor : public BaseDrawableWidget
 	void RenderChar(const uint32_t ch, float &dx, const float dy, const int cx);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
-	void setTextSize(unsigned int size);
 public:
 	TextEditor(const char *fontPath);
 	~TextEditor();
 
 	void Draw();
+	void setTextSize(unsigned int size);
 };
 
 #endif

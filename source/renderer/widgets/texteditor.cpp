@@ -16,10 +16,11 @@ TextEditor::TextEditor(const char *fontPath)
 		printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
 				mainFace->family_name, mainFace->style_name, fontPath);
 
+	InitGL();
+
 	cacher.face = mainFace;
 	cacher.ftLib = ftLib;
-
-	InitGL();
+	cacher.Precache(this, 14);
 }
 
 void TextEditor::InitGL()
@@ -39,7 +40,6 @@ void TextEditor::InitGL()
 			texCoord = coord.zw;
 		}
 	);
-
 	const char *ForegroundFragShaderSrc = GLSL(
 		varying vec2 texCoord;
 		uniform sampler2D tex0;
@@ -55,7 +55,6 @@ void TextEditor::InitGL()
 			gl_Position = vec4(vcoord, 0, 1);
 		}
 	);
-
 	const char *BacgroundFragShaderSrc = GLSL(
 		uniform vec3 bg;
 		void main() {
@@ -131,7 +130,7 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	const float xadv = glyph.xAdvance*sx;
 
 	// -------------------- background -----
-	GLfloat bgTriStripVcoords[4][2] = {
+	GLfloat bgVcoords[4][2] = {
 		{ dx,      dy },
 		{ dx+xadv, dy },
 		{ dx,      dy-fontHeight*lineSpacing*sy },
@@ -142,35 +141,33 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
 	glEnableVertexAttribArray(bg_vcoordAttribute);
 	glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(bgTriStripVcoords), bgTriStripVcoords,
-			GL_DYNAMIC_DRAW); // TODO
+	glBufferData(GL_ARRAY_BUFFER, sizeof(bgVcoords), bgVcoords,
+			GL_STATIC_DRAW);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	// TODO disable vertexAttribute arrays
+	glDisableVertexAttribArray(bg_vcoordAttribute);
 
 	// -------------------- foreground -----
-	glUseProgram(fg_shaderProgram);
-
-	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
-	glEnableVertexAttribArray(fg_coordAttribute);
-	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
-
 	const float x2 = dx + glyph.left*sx;
 	const float y2 = dy-fontHeight*sy + glyph.top*sy;
 	const float w = glyph.width*sx;
 	const float h = glyph.height*sy;
 
-	GLfloat fgTriStrip[4][4] = {
+	GLfloat fgCoordsAndUVs[4][4] = {
 		{ x2,   y2,   0, 0 },
 		{ x2+w, y2,   1, 0 },
 		{ x2,   y2-h, 0, 1 },
 		{ x2+w, y2-h, 1, 1 },
 	};
-	// TODO separate
 
-	glBufferData(GL_ARRAY_BUFFER, sizeof(fgTriStrip), fgTriStrip, GL_DYNAMIC_DRAW);
+	glUseProgram(fg_shaderProgram);
+	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
+	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
+	glEnableVertexAttribArray(fg_coordAttribute);
+	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(fgCoordsAndUVs), fgCoordsAndUVs,
+			GL_STATIC_DRAW);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDisableVertexAttribArray(fg_coordAttribute);
 
 	dx = -1 + (cx+1)*xadv;
 }
@@ -211,6 +208,14 @@ TextEditor::~TextEditor()
 	FT_Done_FreeType(ftLib);
 }
 
+void TextCacher::Precache(TextEditor *ted, unsigned int size)
+{
+	ted->setTextSize(size);
+
+	for (int i = 0; i < 256; i++)
+		Lookup(i, size);
+}
+
 glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 {
 	const glyphKey_t key = { ch, size };
@@ -220,6 +225,9 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 		return normalGlyphs.at(key);
 	} else {
 		// doesn't exist
+		printf("Doesn't exist: %d\n", ch);
+		if (ch < 1)
+			ch = 0xFFFD; // REPLACEMENT CHARACTER, looks like this: <?>
 		const int errCode = FT_Load_Char(face, ch, FT_LOAD_RENDER);
 		assertf(errCode == 0, "Failed to render char '%c'", ch);
 
