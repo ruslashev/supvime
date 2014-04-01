@@ -2,6 +2,7 @@
  * Cache different font sizes
  * Rework glutils (don't dynamically allocate array, passing by references etc)
  * Remove trailing _t in structs
+ * Add transformation uniform
 */
 
 #include "file.hpp"

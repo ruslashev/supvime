@@ -10,7 +10,7 @@ TextEditor::TextEditor(const char *fontPath)
 	assertf(errCode == 0, "Failed to initialize FreeType");
 
 	errCode = FT_New_Face(ftLib, fontPath, 0, &mainFace);
-	assertf(errCode == 0, "Failed to create a new face");
+	assertf(errCode == 0, "Failed to create a new face for font \"%s\"", fontPath);
 
 	if (!FT_IS_FIXED_WIDTH(mainFace))
 		printf("Warning: Font face \"%s %s\" (%s) is not fixed width!\n",
@@ -20,7 +20,8 @@ TextEditor::TextEditor(const char *fontPath)
 
 	cacher.face = mainFace;
 	cacher.ftLib = ftLib;
-	cacher.Precache(this, 14);
+	cacher.ted = this;
+	cacher.Precache(14);
 }
 
 void TextEditor::InitGL()
@@ -33,26 +34,35 @@ void TextEditor::InitGL()
 	glGenBuffers(1, &bg_textVBO);
 
 	const char *ForegroundVertShaderSrc = GLSL(
-		attribute vec4 coord;
-		varying vec2 texCoord;
+		attribute vec2 inVertCoord;
+		attribute vec2 inTextureCoord;
+		varying vec2 outTextureCoord;
+
+		uniform vec2 transformation;
+
 		void main() {
-			gl_Position = vec4(coord.xy, 0, 1);
-			texCoord = coord.zw;
+			vec2 result = inVertCoord+inCellCoord+transformation;
+			gl_Position = vec4(result, 0, 1);
+			outTextureCoord = inTextureCoord;
 		}
 	);
+	// TODO rename tex0
 	const char *ForegroundFragShaderSrc = GLSL(
-		varying vec2 texCoord;
+		varying vec2 outTextureCoord;
 		uniform sampler2D tex0;
 		uniform vec3 fg;
 		void main() {
-			gl_FragColor = vec4(fg, texture2D(tex0, texCoord).r);
+			gl_FragColor = vec4(fg, texture2D(tex0, outTextureCoord).r);
 		}
 	);
 
 	const char *BackgroundVertShaderSrc = GLSL(
-		attribute vec2 vcoord;
+		attribute vec2 inVertCoord;
+
+		uniform vec2 transformation;
+
 		void main() {
-			gl_Position = vec4(vcoord, 0, 1);
+			gl_Position = vec4(inVertCoord+transformation, 0, 1);
 		}
 	);
 	const char *BacgroundFragShaderSrc = GLSL(
@@ -65,17 +75,54 @@ void TextEditor::InitGL()
 	fg_vertShader = CreateShader(GL_VERTEX_SHADER, ForegroundVertShaderSrc);
 	fg_fragShader = CreateShader(GL_FRAGMENT_SHADER, ForegroundFragShaderSrc);
 	fg_shaderProgram = CreateShaderProgram(fg_vertShader, fg_fragShader);
-	fg_coordAttribute = BindAttribute(fg_shaderProgram, "coord");
+
+	fg_vertCoordAttribute = BindAttribute(fg_shaderProgram, "inVertCoord");
+	fg_textureCoordAttribute = BindAttribute(fg_shaderProgram, "inTextureCoord");
+
 	fg_textureUnif = BindUniform(fg_shaderProgram, "tex0");
 	fg_FGcolorUnif = BindUniform(fg_shaderProgram, "fg");
+	fg_transfUnif = BindUniform(fg_shaderProgram, "transformation");
+
 
 	bg_vertShader = CreateShader(GL_VERTEX_SHADER, BackgroundVertShaderSrc);
 	bg_fragShader = CreateShader(GL_FRAGMENT_SHADER, BacgroundFragShaderSrc);
 	bg_shaderProgram = CreateShaderProgram(bg_vertShader, bg_fragShader);
-	bg_vcoordAttribute = BindAttribute(bg_shaderProgram, "vcoord");
+
+	bg_vertCoordAttribute = BindAttribute(bg_shaderProgram, "inVertCoord");
+
 	bg_BGcolorUnif = BindUniform(bg_shaderProgram, "bg");
+	bg_transfUnif = BindUniform(bg_shaderProgram, "transformation");
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	// GLfloat transformation[2] = { 0, 0 };
+	// glUniform2fv(fg_transfUnif, 1, transformation);
+	// glUniform2fv(bg_transfUnif, 1, transformation);
+
+	const GLfloat texCoords[4][2] = {
+		{ 0, 0 },
+		{ 1, 0 },
+		{ 0, 1 },
+		{ 1, 1 }
+	};
+	glGenBuffers(1, &fg_texCoordsVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, fg_texCoordsVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(texCoords), texCoords, GL_STATIC_DRAW);
+
+	const int errCode = FT_Load_Char(mainFace, ' ', FT_LOAD_RENDER);
+	assertf(errCode == 0, "Failed to render space character");
+	const float xadv = (mainFace->glyph->advance.x >> 6)*sx;
+	const float height = fontHeight*lineSpacing*sy;
+	GLfloat bgCellVertCoords[4][2] = {
+		{ 0,      0 },
+		{ 0+xadv, 0 },
+		{ 0,      0-height },
+		{ 0+xadv, 0-height }
+	};
+	glGenBuffers(1, &bg_cellVertCoordsVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, bg_cellVertCoordsVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(bgCellVertCoords), bgCellVertCoords,
+			GL_STATIC_DRAW);
 }
 
 void TextEditor::Draw()
@@ -130,21 +177,16 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	const float xadv = glyph.xAdvance*sx;
 
 	// -------------------- background -----
-	GLfloat bgVcoords[4][2] = {
-		{ dx,      dy },
-		{ dx+xadv, dy },
-		{ dx,      dy-fontHeight*lineSpacing*sy },
-		{ dx+xadv, dy-fontHeight*lineSpacing*sy }
-	};
-
 	glUseProgram(bg_shaderProgram);
+
 	glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
-	glEnableVertexAttribArray(bg_vcoordAttribute);
-	glVertexAttribPointer(bg_vcoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(bg_vertCoordAttribute);
+	glVertexAttribPointer(bg_vertCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
 	glBufferData(GL_ARRAY_BUFFER, sizeof(bgVcoords), bgVcoords,
 			GL_STATIC_DRAW);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glDisableVertexAttribArray(bg_vcoordAttribute);
+	glDisableVertexAttribArray(bg_vertCoordAttribute);
 
 	// -------------------- foreground -----
 	const float x2 = dx + glyph.left*sx;
@@ -152,22 +194,30 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	const float w = glyph.width*sx;
 	const float h = glyph.height*sy;
 
-	GLfloat fgCoordsAndUVs[4][4] = {
-		{ x2,   y2,   0, 0 },
-		{ x2+w, y2,   1, 0 },
-		{ x2,   y2-h, 0, 1 },
-		{ x2+w, y2-h, 1, 1 },
+	GLfloat fgVertCoords[4][2] = {
+		{ 0,   0   },
+		{ 0+w, 0   },
+		{ 0,   0-h },
+		{ 0+w, 0-h }
 	};
 
 	glUseProgram(fg_shaderProgram);
 	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
 	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
-	glEnableVertexAttribArray(fg_coordAttribute);
-	glVertexAttribPointer(fg_coordAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(fgCoordsAndUVs), fgCoordsAndUVs,
-			GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(fg_vertCoordAttribute);
+	glEnableVertexAttribArray(fg_textureCoordAttribute);
+
+	glVertexAttribPointer(fg_vertCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(fgVertCoords), fgVertCoords, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(fg_textureCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(fgTextureCoords), fgTextureCoords, GL_STATIC_DRAW);
+
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glDisableVertexAttribArray(fg_coordAttribute);
+
+	glDisableVertexAttribArray(fg_vertCoordAttribute);
+	glDisableVertexAttribArray(fg_textureCoordAttribute);
 
 	dx = -1 + (cx+1)*xadv;
 }
@@ -208,10 +258,9 @@ TextEditor::~TextEditor()
 	FT_Done_FreeType(ftLib);
 }
 
-void TextCacher::Precache(TextEditor *ted, unsigned int size)
+void TextCacher::Precache(unsigned int size)
 {
 	ted->setTextSize(size);
-
 	for (int i = 0; i < 256; i++)
 		Lookup(i, size);
 }
@@ -223,9 +272,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 
 	if (normalGlyphs.find(key) != normalGlyphs.end()) {
 		return normalGlyphs.at(key);
-	} else {
-		// doesn't exist
-		printf("Doesn't exist: %d\n", ch);
+	} else { // doesn't exist
 		if (ch < 1)
 			ch = 0xFFFD; // REPLACEMENT CHARACTER, looks like this: <?>
 		const int errCode = FT_Load_Char(face, ch, FT_LOAD_RENDER);
@@ -242,6 +289,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
 		const glyph_t value = {
+			vCoordsVBO,
 			textureID,
 			g->advance.x >> 6,
 			g->bitmap_left,
@@ -258,7 +306,9 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 
 TextCacher::~TextCacher()
 {
-	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it)
+	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it) {
+		glDeleteBuffers(1, &it->second.vCoordsVBO);
 		glDeleteTextures(1, &it->second.textureID);
+	}
 }
 

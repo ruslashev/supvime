@@ -15,7 +15,7 @@
 #include FT_FREETYPE_H
 
 struct glyph_t {
-	GLuint textureID;
+	GLuint vCoordsVBO, textureID;
 	long xAdvance;
 	int left, top, width, height;
 };
@@ -35,7 +35,9 @@ class TextCacher
 public:
 	FT_Face face;
 	FT_Library ftLib;
-	void Precache(TextEditor *ted, unsigned int size);
+	TextEditor *ted;
+
+	void Precache(unsigned int size);
 	glyph_t Lookup(uint32_t ch, unsigned int size);
 	~TextCacher();
 };
@@ -44,17 +46,21 @@ class TextEditor : public BaseDrawableWidget
 {
 	FT_Library ftLib;
 	FT_Face mainFace;
-	unsigned int fontHeight;
 	TextCacher cacher;
 
-	GLuint fg_textVBO, bg_textVBO;
-	GLint fg_textureUnif, fg_FGcolorUnif, bg_BGcolorUnif;
-	GLint fg_coordAttribute, bg_vcoordAttribute;
-	GLuint fg_vertShader, fg_fragShader, bg_vertShader, bg_fragShader;
-	GLuint fg_shaderProgram, bg_shaderProgram;
+	GLuint fg_texCoordsVBO, bg_cellVertCoordsVBO;
 
-	const float sx, sy;
-	const float lineSpacing;
+	GLuint fg_textVBO;
+	GLint fg_textureUnif, fg_FGcolorUnif, fg_transfUnif;
+	GLint fg_vertCoordAttribute, fg_textureCoordAttribute;
+	GLuint fg_vertShader, fg_fragShader;
+	GLuint fg_shaderProgram;
+
+	GLuint bg_textVBO;
+	GLint bg_BGcolorUnif, bg_transfUnif;
+	GLint bg_vertCoordAttribute, bg_cellCoordAttribute;
+	GLuint bg_vertShader, bg_fragShader;
+	GLuint bg_shaderProgram;
 
 	void InitGL();
 	void RenderFile();
@@ -64,6 +70,10 @@ class TextEditor : public BaseDrawableWidget
 public:
 	TextEditor(const char *fontPath);
 	~TextEditor();
+
+	unsigned int fontHeight;
+	const float sx, sy;
+	const float lineSpacing;
 
 	void Draw();
 	void setTextSize(unsigned int size);
