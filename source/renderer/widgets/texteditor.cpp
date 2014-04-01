@@ -31,7 +31,6 @@ void TextEditor::InitGL()
 	assertf(GLEW_VERSION_2_1, "Your graphics card's OpenGL version is less than 2.1.");
 
 	glGenBuffers(1, &fg_textVBO);
-	glGenBuffers(1, &bg_textVBO);
 
 	const char *ForegroundVertShaderSrc = GLSL(
 		attribute vec2 inVertCoord;
@@ -41,7 +40,7 @@ void TextEditor::InitGL()
 		uniform vec2 transformation;
 
 		void main() {
-			vec2 result = inVertCoord+inCellCoord+transformation;
+			vec2 result = inVertCoord+transformation;
 			gl_Position = vec4(result, 0, 1);
 			outTextureCoord = inTextureCoord;
 		}
@@ -94,35 +93,6 @@ void TextEditor::InitGL()
 	bg_transfUnif = BindUniform(bg_shaderProgram, "transformation");
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	// GLfloat transformation[2] = { 0, 0 };
-	// glUniform2fv(fg_transfUnif, 1, transformation);
-	// glUniform2fv(bg_transfUnif, 1, transformation);
-
-	const GLfloat texCoords[4][2] = {
-		{ 0, 0 },
-		{ 1, 0 },
-		{ 0, 1 },
-		{ 1, 1 }
-	};
-	glGenBuffers(1, &fg_texCoordsVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, fg_texCoordsVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(texCoords), texCoords, GL_STATIC_DRAW);
-
-	const int errCode = FT_Load_Char(mainFace, ' ', FT_LOAD_RENDER);
-	assertf(errCode == 0, "Failed to render space character");
-	const float xadv = (mainFace->glyph->advance.x >> 6)*sx;
-	const float height = fontHeight*lineSpacing*sy;
-	GLfloat bgCellVertCoords[4][2] = {
-		{ 0,      0 },
-		{ 0+xadv, 0 },
-		{ 0,      0-height },
-		{ 0+xadv, 0-height }
-	};
-	glGenBuffers(1, &bg_cellVertCoordsVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, bg_cellVertCoordsVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(bgCellVertCoords), bgCellVertCoords,
-			GL_STATIC_DRAW);
 }
 
 void TextEditor::Draw()
@@ -179,16 +149,18 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	// -------------------- background -----
 	glUseProgram(bg_shaderProgram);
 
-	glBindBuffer(GL_ARRAY_BUFFER, bg_textVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, cacher.bg_cellVertCoordsVBO);
 	glEnableVertexAttribArray(bg_vertCoordAttribute);
 	glVertexAttribPointer(bg_vertCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glBufferData(GL_ARRAY_BUFFER, sizeof(bgVcoords), bgVcoords,
-			GL_STATIC_DRAW);
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glDisableVertexAttribArray(bg_vertCoordAttribute);
+	GLfloat transformation[2] = { dx, dy };
+	glUniform2fv(bg_transfUnif, 1, transformation);
 
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	glDisableVertexAttribArray(bg_vertCoordAttribute);
 	// -------------------- foreground -----
+#if 0
 	const float x2 = dx + glyph.left*sx;
 	const float y2 = dy-fontHeight*sy + glyph.top*sy;
 	const float w = glyph.width*sx;
@@ -215,6 +187,7 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glBufferData(GL_ARRAY_BUFFER, sizeof(fgTextureCoords), fgTextureCoords, GL_STATIC_DRAW);
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+#endif
 
 	glDisableVertexAttribArray(fg_vertCoordAttribute);
 	glDisableVertexAttribArray(fg_textureCoordAttribute);
@@ -249,7 +222,6 @@ TextEditor::~TextEditor()
 	glDeleteShader(fg_vertShader);
 	glDeleteShader(fg_fragShader);
 
-	glDeleteBuffers(1, &bg_textVBO);
 	glDeleteProgram(bg_shaderProgram);
 	glDeleteShader(bg_vertShader);
 	glDeleteShader(bg_fragShader);
@@ -263,6 +235,31 @@ void TextCacher::Precache(unsigned int size)
 	ted->setTextSize(size);
 	for (int i = 0; i < 256; i++)
 		Lookup(i, size);
+
+	const GLfloat texCoords[4][2] = {
+		{ 0, 0 },
+		{ 1, 0 },
+		{ 0, 1 },
+		{ 1, 1 }
+	};
+	glGenBuffers(1, &fg_texCoordsVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, fg_texCoordsVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(texCoords), texCoords, GL_STATIC_DRAW);
+
+	const int errCode = FT_Load_Char(face, ' ', FT_LOAD_RENDER);
+	assertf(errCode == 0, "Failed to render space character");
+	const float xadv = (face->glyph->advance.x >> 6)*ted->sx;
+	const float height = ted->fontHeight*ted->lineSpacing*ted->sy;
+	GLfloat bgCellVertCoords[4][2] = {
+		{ 0,      0 },
+		{ 0+xadv, 0 },
+		{ 0,      0-height },
+		{ 0+xadv, 0-height }
+	};
+	glGenBuffers(1, &bg_cellVertCoordsVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, bg_cellVertCoordsVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(bgCellVertCoords), bgCellVertCoords,
+			GL_STATIC_DRAW);
 }
 
 glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
@@ -289,7 +286,6 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
 		const glyph_t value = {
-			vCoordsVBO,
 			textureID,
 			g->advance.x >> 6,
 			g->bitmap_left,
@@ -307,8 +303,9 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 TextCacher::~TextCacher()
 {
 	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it) {
-		glDeleteBuffers(1, &it->second.vCoordsVBO);
 		glDeleteTextures(1, &it->second.textureID);
 	}
+	glDeleteBuffers(1, &fg_texCoordsVBO);
+	glDeleteBuffers(1, &bg_cellVertCoordsVBO);
 }
 
