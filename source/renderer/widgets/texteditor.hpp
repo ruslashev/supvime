@@ -15,7 +15,7 @@
 #include FT_FREETYPE_H
 
 struct glyph_t {
-	GLuint textureID;
+	GLuint fg_cellVertCoordsVBO, textureID;
 	long xAdvance;
 	int left, top, width, height;
 };
@@ -50,7 +50,6 @@ class TextEditor : public BaseDrawableWidget
 	FT_Face mainFace;
 	TextCacher cacher;
 
-	GLuint fg_textVBO;
 	GLint fg_textureUnif, fg_FGcolorUnif, fg_transfUnif;
 	GLint fg_vertCoordAttribute, fg_textureCoordAttribute;
 	GLuint fg_vertShader, fg_fragShader;

@@ -30,8 +30,6 @@ void TextEditor::InitGL()
 	assertf(err == GLEW_OK, "Failed to initialize GLEW: %s", glewGetErrorString(err));
 	assertf(GLEW_VERSION_2_1, "Your graphics card's OpenGL version is less than 2.1.");
 
-	glGenBuffers(1, &fg_textVBO);
-
 	const char *ForegroundVertShaderSrc = GLSL(
 		attribute vec2 inVertCoord;
 		attribute vec2 inTextureCoord;
@@ -145,6 +143,7 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 {
 	const glyph_t glyph = cacher.Lookup(ch, 14);
 	const float xadv = glyph.xAdvance*sx;
+	GLfloat transformation[2] = { dx, dy };
 
 	// -------------------- background -----
 	glUseProgram(bg_shaderProgram);
@@ -153,41 +152,27 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glEnableVertexAttribArray(bg_vertCoordAttribute);
 	glVertexAttribPointer(bg_vertCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
-	GLfloat transformation[2] = { dx, dy };
 	glUniform2fv(bg_transfUnif, 1, transformation);
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glDisableVertexAttribArray(bg_vertCoordAttribute);
+
 	// -------------------- foreground -----
-#if 0
-	const float x2 = dx + glyph.left*sx;
-	const float y2 = dy-fontHeight*sy + glyph.top*sy;
-	const float w = glyph.width*sx;
-	const float h = glyph.height*sy;
-
-	GLfloat fgVertCoords[4][2] = {
-		{ 0,   0   },
-		{ 0+w, 0   },
-		{ 0,   0-h },
-		{ 0+w, 0-h }
-	};
-
 	glUseProgram(fg_shaderProgram);
-	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
-	glBindBuffer(GL_ARRAY_BUFFER, fg_textVBO);
 
+	glBindBuffer(GL_ARRAY_BUFFER, glyph.fg_cellVertCoordsVBO);
 	glEnableVertexAttribArray(fg_vertCoordAttribute);
-	glEnableVertexAttribArray(fg_textureCoordAttribute);
-
 	glVertexAttribPointer(fg_vertCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(fgVertCoords), fgVertCoords, GL_STATIC_DRAW);
 
+	glBindBuffer(GL_ARRAY_BUFFER, cacher.fg_texCoordsVBO);
+	glEnableVertexAttribArray(fg_textureCoordAttribute);
 	glVertexAttribPointer(fg_textureCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(fgTextureCoords), fgTextureCoords, GL_STATIC_DRAW);
+	glBindTexture(GL_TEXTURE_2D, glyph.textureID);
+
+	glUniform2fv(fg_transfUnif, 1, transformation);
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-#endif
 
 	glDisableVertexAttribArray(fg_vertCoordAttribute);
 	glDisableVertexAttribArray(fg_textureCoordAttribute);
@@ -217,7 +202,6 @@ void TextEditor::setTextSize(unsigned int size)
 
 TextEditor::~TextEditor()
 {
-	glDeleteBuffers(1, &fg_textVBO);
 	glDeleteProgram(fg_shaderProgram);
 	glDeleteShader(fg_vertShader);
 	glDeleteShader(fg_fragShader);
@@ -275,6 +259,22 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 		const int errCode = FT_Load_Char(face, ch, FT_LOAD_RENDER);
 		assertf(errCode == 0, "Failed to render char '%c'", ch);
 
+		const float x2 = g->bitmap_left*ted->sx;
+		const float y2 = g->bitmap_top*ted->sy - ted->fontHeight*ted->sy;
+		const float w  = g->bitmap.width*ted->sx;
+		const float h  = g->bitmap.rows*ted->sy;
+		GLfloat fgVertCoords[4][2] = {
+			{ x2,   y2   },
+			{ x2+w, y2   },
+			{ x2,   y2-h },
+			{ x2+w, y2-h }
+		};
+		GLuint fg_cellVertCoordsVBO;
+		glGenBuffers(1, &fg_cellVertCoordsVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, fg_cellVertCoordsVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(fgVertCoords), fgVertCoords,
+				GL_STATIC_DRAW);
+
 		GLuint textureID;
 		glGenTextures(1, &textureID);
 		glBindTexture(GL_TEXTURE_2D, textureID);
@@ -286,6 +286,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
 		const glyph_t value = {
+			fg_cellVertCoordsVBO,
 			textureID,
 			g->advance.x >> 6,
 			g->bitmap_left,
@@ -303,6 +304,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 TextCacher::~TextCacher()
 {
 	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it) {
+		glDeleteBuffers(1, &it->second.fg_cellVertCoordsVBO);
 		glDeleteTextures(1, &it->second.textureID);
 	}
 	glDeleteBuffers(1, &fg_texCoordsVBO);
