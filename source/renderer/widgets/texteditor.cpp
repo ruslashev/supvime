@@ -36,10 +36,11 @@ void TextEditor::InitGL()
 		varying vec2 outTextureCoord;
 
 		uniform vec2 transformation;
+		uniform vec2 globalTransformation;
 
 		void main() {
-			vec2 result = inVertCoord+transformation;
-			gl_Position = vec4(result.x, 0, 1);
+			vec2 result = inVertCoord+transformation+globalTransformation;
+			gl_Position = vec4(result, 0, 1);
 			outTextureCoord = inTextureCoord;
 		}
 	);
@@ -48,6 +49,7 @@ void TextEditor::InitGL()
 		varying vec2 outTextureCoord;
 		uniform sampler2D tex0;
 		uniform vec3 fg;
+
 		void main() {
 			gl_FragColor = vec4(fg, texture2D(tex0, outTextureCoord).r);
 		}
@@ -57,13 +59,16 @@ void TextEditor::InitGL()
 		attribute vec2 inVertCoord;
 
 		uniform vec2 transformation;
+		uniform vec2 globalTransformation;
 
 		void main() {
-			gl_Position = vec4(inVertCoord+transformation, 0, 1);
+			vec2 result = inVertCoord+transformation+globalTransformation;
+			gl_Position = vec4(result, 0, 1);
 		}
 	);
 	const char *BacgroundFragShaderSrc = GLSL(
 		uniform vec3 bg;
+
 		void main() {
 			gl_FragColor = vec4(bg, 1);
 		}
@@ -79,6 +84,7 @@ void TextEditor::InitGL()
 	fg_textureUnif = BindUniform(fg_shaderProgram, "tex0");
 	fg_FGcolorUnif = BindUniform(fg_shaderProgram, "fg");
 	fg_transfUnif = BindUniform(fg_shaderProgram, "transformation");
+	fg_gtransfUnif = BindUniform(fg_shaderProgram, "globalTransformation");
 
 
 	bg_vertShader = CreateShader(GL_VERTEX_SHADER, BackgroundVertShaderSrc);
@@ -89,6 +95,7 @@ void TextEditor::InitGL()
 
 	bg_BGcolorUnif = BindUniform(bg_shaderProgram, "bg");
 	bg_transfUnif = BindUniform(bg_shaderProgram, "transformation");
+	bg_gtransfUnif = BindUniform(bg_shaderProgram, "globalTransformation");
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
@@ -98,6 +105,7 @@ void TextEditor::Draw()
 	setTextSize(14);
 	setTextForeground(0, 0, 0);
 	setTextBackground(255, 255, 255);
+	setGlobalTransformation(0, 0);
 
 	RenderFile();
 
@@ -141,7 +149,7 @@ void TextEditor::RenderFile()
 
 void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const int cx)
 {
-	const glyph_t glyph = cacher.Lookup(ch, 14);
+	const glyph glyph = cacher.Lookup(ch, 14);
 	const float xadv = glyph.xAdvance*sx;
 	GLfloat transformation[2] = { dx, dy };
 
@@ -192,6 +200,17 @@ void TextEditor::setTextBackground(unsigned char r, unsigned char g, unsigned ch
 	glUseProgram(bg_shaderProgram);
 	GLfloat color[3] = { r/255.f, g/255.f, b/255.f };
 	glUniform3fv(bg_BGcolorUnif, 1, color);
+}
+
+void TextEditor::setGlobalTransformation(float x, float y)
+{
+	GLfloat transf[2] = { x, -y };
+
+	glUseProgram(fg_shaderProgram);
+	glUniform2fv(fg_gtransfUnif, 1, transf);
+
+	glUseProgram(bg_shaderProgram);
+	glUniform2fv(bg_gtransfUnif, 1, transf);
 }
 
 void TextEditor::setTextSize(unsigned int size)
@@ -246,9 +265,9 @@ void TextCacher::Precache(unsigned int size)
 			GL_STATIC_DRAW);
 }
 
-glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
+glyph TextCacher::Lookup(uint32_t ch, unsigned int size)
 {
-	const glyphKey_t key = { ch, size };
+	const glyphKey key = { ch, size };
 	const FT_GlyphSlot g = face->glyph;
 
 	if (normalGlyphs.find(key) != normalGlyphs.end()) {
@@ -285,7 +304,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 				g->bitmap.width, g->bitmap.rows, 0,
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
-		const glyph_t value = {
+		const glyph value = {
 			fg_glyphVertCoordsVBO,
 			textureID,
 			g->advance.x >> 6,
