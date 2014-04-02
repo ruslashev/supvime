@@ -15,7 +15,7 @@
 #include FT_FREETYPE_H
 
 struct glyph_t {
-	GLuint fg_cellVertCoordsVBO, textureID;
+	GLuint fg_glyphVertCoordsVBO, textureID;
 	long xAdvance;
 	int left, top, width, height;
 };

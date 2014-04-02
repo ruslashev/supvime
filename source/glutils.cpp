@@ -24,6 +24,7 @@ GLuint CreateShaderProgram(GLuint vs, GLuint fs)
 	glAttachShader(program, vs);
 	glAttachShader(program, fs);
 	glLinkProgram(program);
+
 	GLint success;
 	glGetProgramiv(program, GL_LINK_STATUS, &success);
 	if (!success) {
@@ -33,23 +34,16 @@ GLuint CreateShaderProgram(GLuint vs, GLuint fs)
 	return program;
 }
 
-void PrintLog(GLuint &shaderOrProg)
+void PrintLog(GLuint shaderOrProg)
 {
-	GLint logLen = 0;
-	char *log;
+	char log[1024];
 
-	if (glIsShader(shaderOrProg)) {
-		glGetShaderiv(shaderOrProg, GL_INFO_LOG_LENGTH, &logLen);
-		log = new char [logLen];
-		glGetShaderInfoLog(shaderOrProg, logLen, NULL, log);
-	} else {
-		glGetProgramiv(shaderOrProg, GL_INFO_LOG_LENGTH, &logLen);
-		log = new char [logLen];
-		glGetProgramInfoLog(shaderOrProg, logLen, NULL, log);
-	}
+	if (glIsShader(shaderOrProg))
+		glGetShaderInfoLog(shaderOrProg, 1024, NULL, log);
+	else
+		glGetProgramInfoLog(shaderOrProg, 1024, NULL, log);
 
-	puts(log);
-	delete [] log;
+	printf("%s", log);
 }
 
 GLint BindUniform(GLuint shaderProgramP, const char *name)

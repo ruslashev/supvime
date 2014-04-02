@@ -39,7 +39,7 @@ void TextEditor::InitGL()
 
 		void main() {
 			vec2 result = inVertCoord+transformation;
-			gl_Position = vec4(result, 0, 1);
+			gl_Position = vec4(result.x, 0, 1);
 			outTextureCoord = inTextureCoord;
 		}
 	);
@@ -161,7 +161,7 @@ void TextEditor::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	// -------------------- foreground -----
 	glUseProgram(fg_shaderProgram);
 
-	glBindBuffer(GL_ARRAY_BUFFER, glyph.fg_cellVertCoordsVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, glyph.fg_glyphVertCoordsVBO);
 	glEnableVertexAttribArray(fg_vertCoordAttribute);
 	glVertexAttribPointer(fg_vertCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -269,9 +269,9 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 			{ x2,   y2-h },
 			{ x2+w, y2-h }
 		};
-		GLuint fg_cellVertCoordsVBO;
-		glGenBuffers(1, &fg_cellVertCoordsVBO);
-		glBindBuffer(GL_ARRAY_BUFFER, fg_cellVertCoordsVBO);
+		GLuint fg_glyphVertCoordsVBO;
+		glGenBuffers(1, &fg_glyphVertCoordsVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, fg_glyphVertCoordsVBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(fgVertCoords), fgVertCoords,
 				GL_STATIC_DRAW);
 
@@ -286,7 +286,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 				GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
 		const glyph_t value = {
-			fg_cellVertCoordsVBO,
+			fg_glyphVertCoordsVBO,
 			textureID,
 			g->advance.x >> 6,
 			g->bitmap_left,
@@ -304,7 +304,7 @@ glyph_t TextCacher::Lookup(uint32_t ch, unsigned int size)
 TextCacher::~TextCacher()
 {
 	for (auto it = normalGlyphs.begin(); it != normalGlyphs.end(); ++it) {
-		glDeleteBuffers(1, &it->second.fg_cellVertCoordsVBO);
+		glDeleteBuffers(1, &it->second.fg_glyphVertCoordsVBO);
 		glDeleteTextures(1, &it->second.textureID);
 	}
 	glDeleteBuffers(1, &fg_texCoordsVBO);
