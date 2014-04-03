@@ -105,6 +105,7 @@ void TextDrawer::RenderString(const std::string str, float &dx, const float dy)
 	float sdx = dx;
 	for (auto &ch : str)
 		RenderChar(ch, sdx, dy);
+	dx = sdx;
 }
 
 void TextDrawer::RenderChar(const uint32_t ch, float &dx, const float dy)
