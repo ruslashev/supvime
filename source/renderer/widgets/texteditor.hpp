@@ -1,7 +1,6 @@
 #ifndef TEXTEDITOR_HPP
 #define TEXTEDITOR_HPP
 
-#include "../../editor.hpp"
 #include "../basedrawablewidget.hpp"
 #include "../textdrawer.hpp"
 

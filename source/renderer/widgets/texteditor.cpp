@@ -10,7 +10,6 @@ void TextEditor::Draw()
 	td.setTextSize(14);
 	td.setTextForeground(0, 0, 0);
 	td.setTextBackground(255, 255, 255);
-	td.setGlobalTransformation(0, 0);
 
 	RenderFile();
 
@@ -29,25 +28,27 @@ void TextEditor::RenderFile()
 
 		int cx = 0;
 		for (size_t c = 0; c < srcLine.length(); c++, cx++) {
+			// TODO
 			if (l == ep->curs.y && c == ep->curs.x)
 				td.setTextBackground(100, 100, 100);
 			else
 				td.setTextBackground(255, 255, 255);
 
-			if (srcLine[c] == '\t') {
+			if (srcLine[c] != '\t')
+				td.RenderChar(srcLine[c], dx, dy);
+			else {
 				const int tabsize = 4;
 				const int spacesToInsert = tabsize - (cx % tabsize);
 				td.setTextForeground(200, 200, 200);
-				td.RenderChar('|', dx, dy, cx);
+				td.RenderChar('|', dx, dy);
 				cx++;
 				for (int i = 1; i < spacesToInsert; i++) {
-					td.RenderChar('-', dx, dy, cx);
+					td.RenderChar('-', dx, dy);
 					cx++;
 				}
 				cx--;
 				td.setTextForeground(0, 0, 0);
-			} else
-				td.RenderChar(srcLine[c], dx, dy, cx);
+			}
 		}
 	}
 }

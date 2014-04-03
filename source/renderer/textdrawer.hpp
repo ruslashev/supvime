@@ -62,7 +62,8 @@ public:
 	const float sx, sy;
 	const float lineSpacing;
 
-	void RenderChar(const uint32_t ch, float &dx, const float dy, const int cx);
+	void RenderString(const std::string str, float &dx, const float dy);
+	void RenderChar(const uint32_t ch, float &dx, const float dy);
 	void setTextForeground(unsigned char r, unsigned char g, unsigned char b);
 	void setTextBackground(unsigned char r, unsigned char g, unsigned char b);
 	void setGlobalTransformation(float x, float y);

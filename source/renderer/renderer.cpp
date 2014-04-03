@@ -1,5 +1,7 @@
 #include "renderer.hpp"
 #include "../errors.hpp"
+#include "widgets/texteditor.hpp"
+#include "widgets/statusbar.hpp"
 
 void Renderer::Create(Editor *nep)
 {
@@ -31,9 +33,10 @@ void Renderer::Create(Editor *nep)
 	if (SDL_GL_SetSwapInterval(1) < 0)
 		printf("Warning: Unable to set VSync: %s\n", SDL_GetError());
 
-	widgets.push_back(std::unique_ptr<TextEditor>(
-				new TextEditor("symlink-to-font")));
-	widgets[0]->ep = ep;
+	widgets.push_back(std::unique_ptr<TextEditor>(new TextEditor("symlink-to-font")));
+	widgets.push_back(std::unique_ptr<StatusBar>(new StatusBar("symlink-to-font")));
+	for (auto &it : widgets)
+		it->ep = ep;
 }
 
 void Renderer::UpdateTitle()

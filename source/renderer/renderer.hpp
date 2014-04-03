@@ -1,9 +1,8 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
-#include "widgets/texteditor.hpp"
-#include "basedrawablewidget.hpp"
 #include "../editor.hpp"
+#include "basedrawablewidget.hpp"
 
 #include <vector>
 #include <string>

@@ -21,6 +21,8 @@ TextDrawer::TextDrawer(const char *fontPath)
 	cacher.ftLib = ftLib;
 	cacher.ted = this;
 	cacher.Precache(14);
+
+	setGlobalTransformation(0, 0);
 }
 
 void TextDrawer::InitGL()
@@ -98,7 +100,14 @@ void TextDrawer::InitGL()
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
-void TextDrawer::RenderChar(const uint32_t ch, float &dx, const float dy, const int cx)
+void TextDrawer::RenderString(const std::string str, float &dx, const float dy)
+{
+	float sdx = dx;
+	for (auto &ch : str)
+		RenderChar(ch, sdx, dy);
+}
+
+void TextDrawer::RenderChar(const uint32_t ch, float &dx, const float dy)
 {
 	const glyph glyph = cacher.Lookup(ch, 14);
 	const float xadv = glyph.xAdvance*sx;
@@ -136,7 +145,7 @@ void TextDrawer::RenderChar(const uint32_t ch, float &dx, const float dy, const 
 	glDisableVertexAttribArray(fg_vertCoordAttribute);
 	glDisableVertexAttribArray(fg_textureCoordAttribute);
 
-	dx = -1 + (cx+1)*xadv;
+	dx += xadv;
 }
 
 void TextDrawer::setTextForeground(unsigned char r, unsigned char g, unsigned char b)
