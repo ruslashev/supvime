@@ -16,32 +16,38 @@ Vim + Sublime + Supreme = Supvime
 Here's rough draft of how it works inside:
 
 ```
-       //////                                  //
-    //        //    //  //////    //      //      //////  ////      ////
-     ////    //    //  //    //  //      //  //  //    //    //  ////////
-        //  //    //  //    //    //  //    //  //    //    //  //
- //////      //////  //////        //      //  //    //    //    //////
+        //////                                  //
+     //        //    //  //////    //      //      //////  ////      ////
+      ////    //    //  //    //  //      //  //  //    //    //  ////////
+         //  //    //  //    //    //  //    //  //    //    //  //
+  //////      //////  //////        //      //  //    //    //    //////
+                     //
                     //
-                   //
+ == == == == == == == == == == == == == == == == == == == == == == == == ==
 
-           dependencies
-Main component   |    Must provide
-processes keys,  /   'char getch()'
-edits the file  |      function
-  +--------+    v    +----------+
-  | Editor | <------ | Renderer | _
-  +--------+         +----------+   \ std::vector of
-      |                              \
-      | 1 or more                +--------------------+
-      | someday there will       | BaseDrawableWidget |
-      | be std::vector           +--------------------+
-      v                                    |
-   +------+                                ^
-   | File |                              /   \
-   +------+                +------------+     (in future)
-     aka                   | TextEditor |     * status bar
-   'buffer'                +------------+     * tab bar
-    in vim                                    * :command line bar
+               dependencies
+    Main component   |    Must provide
+    processes keys,  /   'char getch()'
+    edits the file  |      function
+      +--------+    v    +----------+
+      | Editor | <------ | Renderer | _
+      +--------+         +----------+   \ std::vector of
+          |                              \
+          | 1 or more                +--------------------+
+          | someday there will       | BaseDrawableWidget |  In future:
+          | be std::vector           +--------------------+  * tab bar
+          v                                    |             * :command line bar
+       +------+                                ^
+       | File |                              /   \
+       +------+                +------------+     +-----------+
+         aka                   | TextEditor |     | StatusBar |
+       'buffer'                +------------+     +-----------+
+        in vim                         |              |
+                                        \            /
+                                        +------------+
+                                        | TextDrawer |
+                                        +------------+
+
 ```
 
 ### Libraries
@@ -49,7 +55,6 @@ edits the file  |      function
 Supvime wouldn't exist without the following libraries:
 
 * [SDL 2](http://libsdl.org/)
-* OpenGL
 * [GLFW](http://www.glfw.org/)
 * [GLEW](http://glew.sourceforge.net/)
 * [FreeType](http://www.freetype.org/)
