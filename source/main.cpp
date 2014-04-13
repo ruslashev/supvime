@@ -1,7 +1,7 @@
 /* TODO:
  * Cache different font sizes
  * Rename tex0
- * Update diagram in readme
+ * Move glutils to renderer/
 */
 
 #include "file.hpp"

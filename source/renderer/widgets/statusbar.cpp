@@ -2,6 +2,16 @@
 
 StatusBar::StatusBar(const char *fontPath) : td(fontPath)
 {
+	td.setTextSize(14);
+	td.setTextForeground(255, 255, 255);
+	td.setTextBackground(90, 90, 90);
+
+	const float margin = 1;
+	float dx = -1+margin*td.sx;
+	const float startX = dx;
+	const float dy = -1 + td.fontHeight*td.lineSpacing*td.sy + margin*td.sy;
+	td.RenderString("        ", dx, dy);
+	modeMesh.Create(startX, dy, dx-startX, dy+1);
 }
 
 void StatusBar::Draw()
@@ -12,7 +22,7 @@ void StatusBar::Draw()
 
 	const float margin = 1;
 	float dx = -1+margin*td.sx;
-	float dy = -1 + td.fontHeight*td.lineSpacing*td.sy + margin*td.sy;
+	const float dy = -1 + td.fontHeight*td.lineSpacing*td.sy + margin*td.sy;
 	std::string mode = (ep->mode == Editor::NORMAL ? " NORMAL " : " INSERT ");
 	td.RenderString(mode, dx, dy);
 
@@ -20,5 +30,7 @@ void StatusBar::Draw()
 	td.RenderString(" ", dx, dy);
 	td.RenderString(ep->fp->filename, dx, dy);
 	td.RenderString(" ", dx, dy);
+
+	modeMesh.Draw();
 }
 
